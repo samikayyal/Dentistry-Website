@@ -1,11 +1,15 @@
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from routes.base_routes import login_required
-from utils.local_db_utils import get_num_questions_topic, get_questions_for_topic, get_topics
+from utils.local_db_utils import (
+    get_num_questions_topic,
+    get_questions_for_topic,
+    get_topics,
+)
 from utils.question_class import QuestionType
 
 # Create a blueprint for test routes
-test_bp = Blueprint('test', __name__)
+test_bp = Blueprint("test", __name__)
 
 
 @test_bp.route("/test_config/<topic>", methods=["GET", "POST"])

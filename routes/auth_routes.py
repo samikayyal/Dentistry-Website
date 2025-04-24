@@ -1,9 +1,18 @@
-from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from utils.supabase_utils import is_valid_credentails_for_signup
 
 # Create a blueprint for auth routes
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/signup", methods=["GET", "POST"])
@@ -14,7 +23,7 @@ def signup():
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")  
+        confirm_password = request.form.get("confirm_password")
 
         error = is_valid_credentails_for_signup(email, password, confirm_password)
 
@@ -68,7 +77,7 @@ def signin():
                 # Store tokens in Flask session
                 session["supabase_access_token"] = response.session.access_token
                 session["supabase_refresh_token"] = response.session.refresh_token
-                session.permanent = True 
+                session.permanent = True
                 flash("Signin successful!", "success")
                 return redirect(url_for("base.index"))
             else:

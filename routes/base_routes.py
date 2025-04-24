@@ -1,10 +1,11 @@
-from flask import Blueprint, flash, g, render_template
 from functools import wraps
+
+from flask import Blueprint, flash, g, render_template
 
 from utils.local_db_utils import get_topics
 
 # Create a blueprint for base routes
-base_bp = Blueprint('base', __name__)
+base_bp = Blueprint("base", __name__)
 
 
 # Login required decorator
@@ -14,6 +15,7 @@ def login_required(f):
         if g.user is None:
             # flash("Please sign in to access this page.", "warning")
             from flask import redirect, url_for
+
             return redirect(url_for("auth.signin"))
         return f(*args, **kwargs)
 
