@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Test History{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Hide desktop table on mobile, show cards */
+    @media (max-width: 767.98px) {
+        .desktop-history-table {
+            display: none !important;
+        }
+
+        .mobile-history-list {
+            display: block !important;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .desktop-history-table {
+            display: block !important;
+        }
+
+        .mobile-history-list {
+            display: none !important;
+        }
+    }
+
+    .history-card {
+        cursor: pointer;
+        transition: box-shadow 0.2s;
+    }
+
+    .history-card:hover {
+        box-shadow: 0 4px 16px rgba(86, 42, 67, 0.12);
+    }
+
+    .history-details {
+        display: none;
+    }
+
+    .history-card.expanded .history-details {
+        display: block;
+    }
+
+    .history-card .card-header {
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 text-center">Test History</h2>
+    {% if history and history|length > 0 %}
+    <!-- Desktop Card Grid -->
+    <div class="desktop-history-table">
+        <div class="row g-3">
+            {% for record in history %}
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card shadow-sm mb-3 h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold fs-5">{{ record.topic }}</span>
+                            <span class="badge bg-primary fs-6">{{ record.percentage }}%</span>
+                        </div>
+                        <div class="mb-2 text-muted small">{{ record.submitted_at }}</div>
+                        <div class="mb-2">You got <span class="fw-bold">{{ record.num_correct_answers }}</span> out of <span class="fw-bold">{{ record.num_questions }}</span> questions correct</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Mobile Card List -->
+    <div class="mobile-history-list" style="display:none;">
+        <div class="row g-3">
+            {% for record in history %}
+            <div class="col-12">
+                <div class="card history-card shadow-sm mb-2" tabindex="0">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">{{ record.topic }}</span>
+                        </div>
+                        <div class="text-primary fw-bold">{{ record.percentage }}%</div>
+                    </div>
+                    <div class="card-body pt-0 pb-2 history-details">
+                        <div>You got {{ record.num_correct_answers }} out of {{ record.num_questions }} questions correct</div>
+                        <div>{{ record.submitted_at }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <p class="text-center">No test history available.</p>
+    {% endif %}
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('base.index') }}" class="btn btn-primary">Return to Home</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Expand/collapse cards on mobile
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.innerWidth < 768) {
+            document.querySelectorAll('.history-card').forEach(function (card) {
+                card.addEventListener('click', function () {
+                    card.classList.toggle('expanded');
+                });
+                card.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        card.classList.toggle('expanded');
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

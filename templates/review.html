@@ -3,47 +3,61 @@
 {% block title %}Review Test{% endblock %}
 
 {% block extra_head %}
-{{ super() }}
-<style>
-    .option-correct {
-        background-color: #d4edda;
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-    }
-
-    .option-wrong {
-        background-color: #f8d7da;
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-    }
-</style>
+{# Styles moved to style.css #}
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <h2 class="mb-4 text-center">Review Your Answers</h2>
     {% for q in questions %}
-    <div class="card mb-4">
+    <div class="card mb-4 shadow-sm">
         <div class="card-body">
-            {% set user_ans = user_answers.get(q.question_id) %}
-            <h5 class="card-title">Question {{ loop.index }}:{% if not user_ans %} <span class="text-muted">(Not
-                    answered)</span>{% endif %}</h5>
-            <p class="card-text">{{ q.question }}</p>
+            {% set user_ans_list = user_answers.get(q.question_id, []) %}
+            <h5 class="card-title mb-3">Question {{ loop.index }}:{% if not user_ans_list %} <span
+                    class="badge bg-warning text-dark ms-2">Not Answered</span>{% endif %}</h5>
+            <p class="card-text mb-3">{{ q.question }}</p>
             <div class="options">
                 {% for opt in q.options %}
                 {% set idx = loop.index0 %}
-                {% set is_correct = idx in q.correct_answers %}
-                {% set is_selected = user_ans and idx in user_ans %}
-                <div
-                    class="mb-1 {% if is_correct %}option-correct{% endif %}{% if is_selected and not is_correct %} option-wrong{% endif %}">
-                    {{ opt }}
+                {% set is_correct_option = idx in q.correct_answers %}
+                {% set was_selected_by_user = idx in user_ans_list %}
+
+                <div class="review-option mb-2 p-2 rounded d-flex align-items-center 
+                            {% if is_correct_option %}option-correct{% endif %}
+                            {% if was_selected_by_user and not is_correct_option %}option-wrong{% endif %}
+                            {% if not was_selected_by_user and not is_correct_option %}option-neutral{% endif %}">
+
+                    <span class="option-indicator me-2">
+                        {% if is_correct_option %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-check-circle-fill text-success" viewBox="0 0 16 16">
+                            <path
+                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
+                        </svg>
+                        {% elif was_selected_by_user %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-x-circle-fill text-danger" viewBox="0 0 16 16">
+                            <path
+                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z" />
+                        </svg>
+                        {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-circle text-muted" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                        </svg>
+                        {% endif %}
+                    </span>
+
+                    <span class="option-text">{{ opt }}</span>
+
                 </div>
                 {% endfor %}
-            </div> <!-- close options div -->
+            </div>
         </div>
     </div>
     {% endfor %}
-    <div class="text-center">
+    <div class="text-center mt-4 d-grid gap-2 d-sm-flex justify-content-sm-center">
+        <a href="{{ url_for('test.test_results') }}" class="btn btn-outline-secondary">Back to Results</a>
         <a href="{{ url_for('base.index') }}" class="btn btn-primary">Return to Home</a>
     </div>
 </div>

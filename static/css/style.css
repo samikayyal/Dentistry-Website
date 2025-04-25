@@ -1,0 +1,340 @@
+:root {
+    --primary-color: rgb(86, 42, 67);
+    --primary-color-light: rgba(86, 42, 67, 0.8);
+    --primary-color-dark: rgb(66, 32, 47);
+    --secondary-color: #f8f9fa;
+    /* Light grey for backgrounds */
+    --text-color: #343a40;
+    /* Dark grey for text */
+    --light-text: #ffffff;
+}
+
+body {
+    padding-top: 70px;
+    /* Adjust for fixed navbar height */
+    padding-bottom: 60px;
+    /* Adjust for footer height */
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    /* Allows main content to fill available space */
+}
+
+
+.navbar {
+    background-color: var(--primary-color) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: var(--light-text) !important;
+}
+
+.navbar .nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    /* Lighter white for links */
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+    color: var(--light-text) !important;
+}
+
+.navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.navbar-toggler-icon {
+    filter: invert(1);
+}
+
+.navbar .dropdown-menu {
+    background-color: var(--primary-color);
+    border: none;
+}
+
+.navbar .dropdown-item {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+    color: var(--light-text) !important;
+    background-color: var(--primary-color-dark);
+}
+
+.signup-btn {
+    margin-left: 1rem;
+    border-width: 2px;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--light-text);
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+    color: var(--light-text);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--light-text);
+}
+
+.auth-form {
+    max-width: 450px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form h2,
+.config-form .card-title {
+    margin-bottom: 1.5rem;
+    color: var(--primary-color);
+    text-align: center;
+    font-weight: 500;
+    /* Consistent title weight */
+}
+
+.config-form {
+    max-width: 500px;
+    /* Slightly wider than auth form */
+    margin: 2rem auto;
+}
+
+.topic-card {
+    margin-bottom: 20px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+    /* Ensures content respects border radius */
+    background-color: #fff;
+    /* Ensure cards have a background */
+}
+
+.topic-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.topic-card .card-body {
+    padding: 1.5rem;
+}
+
+.topic-card .card-title {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-weight: 500;
+    /* Slightly bolder title */
+}
+
+.topic-card .btn {
+    margin-top: 1rem;
+}
+
+.footer {
+    background-color: #e9ecef;
+    /* Slightly darker than secondary for contrast */
+    color: #6c757d;
+    /* Muted text color */
+    /* position: fixed; Remove fixed position to allow content scrolling */
+    /* bottom: 0; */
+    width: 100%;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+    margin-top: auto;
+    /* Push footer to bottom */
+}
+
+/* Jumbotron styling */
+.jumbotron {
+    background-color: #fff;
+    border-radius: 8px;
+}
+
+/* Results Page Styles */
+.results-card {
+    max-width: 500px;
+    /* Consistent width with config form */
+    margin: 2rem auto;
+}
+
+.progress-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    /* Use a CSS variable for the percentage, passed via inline style */
+    background: conic-gradient(var(--primary-color) var(--percentage, 0%),
+            #e9ecef var(--percentage, 0%));
+    /* Use theme colors */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.progress-circle::before {
+    /* Inner white circle */
+    content: "";
+    position: absolute;
+    width: 85%;
+    height: 85%;
+    background-color: #fff;
+    /* Card background color */
+    border-radius: 50%;
+}
+
+.progress-text {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--primary-color-dark);
+    /* Use theme color */
+    z-index: 1;
+    /* Ensure text is above the pseudo-element */
+}
+
+.score-subtitle {
+    font-size: 1.2em;
+    color: var(--text-color);
+    /* Use theme text color */
+}
+
+.results-buttons .btn {
+    min-width: 140px;
+    /* Slightly smaller min-width */
+}
+
+/* Responsive adjustments for results buttons if needed */
+@media (max-width: 575.98px) {
+    .results-buttons .btn {
+        width: 100%;
+        /* Stack buttons on small screens */
+        margin-bottom: 0.5rem;
+    }
+
+    .results-buttons .btn:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+    .navbar-nav {
+        margin-top: 1rem;
+        /* Add space above nav items when collapsed */
+    }
+
+    .navbar .nav-link {
+        padding: 0.5rem 0;
+        /* Adjust padding for vertical layout */
+    }
+
+    .signup-btn {
+        margin-left: 0;
+        margin-top: 0.5rem;
+        display: block;
+        /* Make it full width */
+        width: fit-content;
+    }
+
+    .navbar .dropdown-menu {
+        background-color: transparent;
+        /* Make dropdown background transparent */
+        border: none;
+        padding-left: 1rem;
+        /* Indent dropdown items */
+    }
+
+    .navbar .dropdown-item {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+
+    .navbar .dropdown-item:hover,
+    .navbar .dropdown-item:focus {
+        background-color: transparent;
+        color: var(--light-text) !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body {
+        padding-top: 60px;
+        /* Adjust for potentially smaller navbar */
+    }
+
+    .auth-form {
+        margin: 1rem auto;
+        padding: 1.5rem;
+    }
+
+    .jumbotron h1 {
+        font-size: 2rem;
+        /* Smaller heading on small screens */
+    }
+
+    .jumbotron p.lead {
+        font-size: 1rem;
+    }
+
+    .topic-card .card-body {
+        padding: 1rem;
+    }
+}
+
+/* Review Page Styles */
+.review-option {
+    border: 1px solid transparent;
+    /* Base border */
+}
+
+.option-correct {
+    background-color: #d1e7dd;
+    /* Bootstrap success background */
+    border-color: #badbcc;
+}
+
+.option-wrong {
+    background-color: #f8d7da;
+    /* Bootstrap danger background */
+    border-color: #f5c2c7;
+}
+
+.option-neutral {
+    background-color: #f8f9fa;
+    /* Light background for unselected/incorrect */
+    border-color: #e9ecef;
+}
+
+.option-indicator svg {
+    vertical-align: middle;
+    /* Align icons better with text */
+}

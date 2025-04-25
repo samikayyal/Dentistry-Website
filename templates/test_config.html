@@ -4,29 +4,40 @@
 
 {% block content %}
 <div class="container py-4">
-    <h2 class="mb-4 text-center">Configure Your Test: <span class="text-primary">{{ topic }}</span></h2>
-    <form method="post" class="mx-auto" style="max-width: 400px;">
-        <div class="mb-3">
-            <label for="num_questions" class="form-label">Number of Questions</label>
-            <div class="d-flex align-items-center">
-                <input type="range" class="form-range me-3" id="num_questions_slider" min="1" max="{{ max_questions }}"
-                    value="{{ default_num_questions }}" style="width: 60%;">
-                <input type="number" class="form-control" id="num_questions" name="num_questions" min="1"
-                    max="{{ max_questions }}" value="{{ default_num_questions }}" required style="width: 40%;">
+    <div class="config-form mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="mb-4 text-center card-title">Configure Your Test: <span class="text-primary">{{ topic
+                        }}</span></h2>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="num_questions" class="form-label">Number of Questions</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="range" class="form-range flex-grow-1" id="num_questions_slider" min="1"
+                                max="{{ max_questions }}" value="{{ default_num_questions }}">
+                            <input type="number" class="form-control" id="num_questions" name="num_questions" min="1"
+                                max="{{ max_questions }}" value="{{ default_num_questions }}" required
+                                style="width: 80px;">
+                        </div>
+                        <div class="form-text text-end">Maximum: {{ max_questions }}</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="duration" class="form-label">Test Duration (minutes)</label>
+                        <input type="number" class="form-control" id="duration" name="duration" min="1" max="120"
+                            value="{{ default_duration }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Start Test</button>
+                </form>
             </div>
-            <div class="form-text">Maximum: {{ max_questions }}</div>
         </div>
-        <div class="mb-3">
-            <label for="duration" class="form-label">Test Duration (minutes)</label>
-            <input type="number" class="form-control" id="duration" name="duration" min="1" max="120"
-                value="{{ default_duration }}" required>
+        <div class="mt-4 text-center">
+            <a href="{{ url_for('base.index') }}" class="btn btn-link">Back to Topics</a>
         </div>
-        <button type="submit" class="btn btn-success w-100">Start Test</button>
-    </form>
-    <div class="mt-4 text-center">
-        <a href="{{ url_for('base.index') }}" class="btn btn-link">Back to Topics</a>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
     const slider = document.getElementById('num_questions_slider');
     const numberInput = document.getElementById('num_questions');
@@ -34,7 +45,15 @@
         numberInput.value = this.value;
     });
     numberInput.addEventListener('input', function () {
-        slider.value = this.value;
+        // Ensure value stays within min/max bounds if typed manually
+        let value = parseInt(this.value);
+        const min = parseInt(this.min);
+        const max = parseInt(this.max);
+        if (isNaN(value)) value = min; // Default to min if invalid input
+        if (value < min) value = min;
+        if (value > max) value = max;
+        this.value = value; // Update input field if needed
+        slider.value = value;
     });
 </script>
 {% endblock %}

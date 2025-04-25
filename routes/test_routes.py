@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from routes.base_routes import login_required
@@ -10,6 +11,8 @@ from utils.question_class import (  # Import selected_questions
     QuestionType,
     selected_questions,
 )
+from utils.supabase_utils import get_test_history
+from utils.utils import format_datetime
 
 # Create a blueprint for test routes
 test_bp = Blueprint("test", __name__)
@@ -132,4 +135,29 @@ def review():
         questions=questions,
         user_answers=user_answers,
         QuestionType=QuestionType,
+    )
+
+
+@test_bp.route("/test_history")
+@login_required
+def test_history():
+    """
+    Displays the test history page.
+    """
+    history = get_test_history(g.supabase_client)
+    for record in history:
+        record["submitted_at"] = format_datetime(record["submitted_at"])
+        percentage = record["num_correct_answers"] / record["num_questions"] * 100
+        record["percentage"] = round(percentage) if percentage else 0
+
+    history = sorted(
+        history,
+        key=lambda x: datetime.strptime(x["submitted_at"], "%B %d, %Y"),
+        reverse=True,
+    )
+
+    return render_template(
+        "test_history.html",
+        user=g.user,
+        history=history,
     )

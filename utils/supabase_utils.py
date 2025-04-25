@@ -2,6 +2,7 @@ import os
 
 import supabase
 from dotenv import load_dotenv
+from flask import g
 
 load_dotenv()
 
@@ -84,3 +85,28 @@ def is_valid_credentails_for_signup(
     if ("@" not in email) or ("." not in email.split("@")[-1]):
         return "Invalid email address."
     return None
+
+
+def get_test_history(supabase_client: supabase.Client) -> list[dict]:
+    """
+    Fetch the test history for a given user.
+
+    Args:
+        supabase_client (Client): The Supabase client instance.
+        user_id (str): The ID of the user.
+
+    Returns:
+        list[dict]: A list of .
+    """
+    try:
+        user_id = g.user.id
+        response = (
+            supabase_client.table("user_test_results")
+            .select("*")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching test history: {e}")
+        return []

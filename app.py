@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 from flask import Flask, g, session
 
 from routes import auth_bp, base_bp, test_bp
-from utils.local_db_utils import get_table_names
-from utils.supabase_utils import get_supabase_client
+
+# from utils.local_db_utils import get_table_names
+from utils.supabase_utils import get_supabase_client, get_test_history
 
 load_dotenv()
 
@@ -79,6 +80,4 @@ app.register_blueprint(test_bp, url_prefix="")
 if __name__ == "__main__":
     print("Registered routes:")
     print(app.url_map)
-    print("-" * 30)  # Separator for clarity
-    print(get_table_names())
     app.run(debug=True, host="0.0.0.0", port=5000)
