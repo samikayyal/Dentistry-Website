@@ -1,6 +1,3 @@
-from datetime import datetime
-
-
 def number_to_month(num: int):
     """
     Converts a number (1-12) to its corresponding month name.

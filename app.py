@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -6,13 +7,19 @@ from flask import Flask, g, session
 from routes import auth_bp, base_bp, test_bp
 
 # from utils.local_db_utils import get_table_names
-from utils.supabase_utils import get_supabase_client, get_test_history
+from utils.supabase_utils import get_supabase_client
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "your-secret-key"  # Replace with a secure secret key
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
 app.permanent_session_lifetime = timedelta(days=30)
+
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
 # Initialize Supabase client (global)
 supabase_client = get_supabase_client()
@@ -78,6 +85,9 @@ app.register_blueprint(test_bp, url_prefix="")
 
 
 if __name__ == "__main__":
-    print("Registered routes:")
-    print(app.url_map)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # print("Registered routes:")
+    # print(app.url_map)
+
+    debug = os.getenv("FLASK_ENV", "").lower() == "development"
+
+    app.run(debug=debug, host="0.0.0.0", port=5000)

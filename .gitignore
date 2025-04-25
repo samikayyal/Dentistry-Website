@@ -13,3 +13,4 @@ wheels/
 *.ipynb_checkpoints
 notes.txt
 /notes.txt
+.env
