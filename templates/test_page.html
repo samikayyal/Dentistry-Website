@@ -8,7 +8,7 @@
     <div class="alert alert-info text-center mb-4">
         <span id="timer" class="fw-bold"></span> left
     </div>
-    <form id="test-form" method="post">
+    <form id="test-form" method="post" action="{{ url_for('test.submit_test') }}">
         {% for q in questions %}
         <div class="card mb-4">
             <div class="card-body">

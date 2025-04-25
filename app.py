@@ -12,7 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = "your-secret-key"  # Replace with a secure secret key
 app.permanent_session_lifetime = timedelta(days=30)
-0000000000000000000000000000000
+
 # Initialize Supabase client (global)
 supabase_client = get_supabase_client()
 

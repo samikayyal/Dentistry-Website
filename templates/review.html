@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Review Test{% endblock %}
+
+{% block extra_head %}
+{{ super() }}
+<style>
+    .option-correct {
+        background-color: #d4edda;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+    }
+
+    .option-wrong {
+        background-color: #f8d7da;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 text-center">Review Your Answers</h2>
+    {% for q in questions %}
+    <div class="card mb-4">
+        <div class="card-body">
+            {% set user_ans = user_answers.get(q.question_id) %}
+            <h5 class="card-title">Question {{ loop.index }}:{% if not user_ans %} <span class="text-muted">(Not
+                    answered)</span>{% endif %}</h5>
+            <p class="card-text">{{ q.question }}</p>
+            <div class="options">
+                {% for opt in q.options %}
+                {% set idx = loop.index0 %}
+                {% set is_correct = idx in q.correct_answers %}
+                {% set is_selected = user_ans and idx in user_ans %}
+                <div
+                    class="mb-1 {% if is_correct %}option-correct{% endif %}{% if is_selected and not is_correct %} option-wrong{% endif %}">
+                    {{ opt }}
+                </div>
+                {% endfor %}
+            </div> <!-- close options div -->
+        </div>
+    </div>
+    {% endfor %}
+    <div class="text-center">
+        <a href="{{ url_for('base.index') }}" class="btn btn-primary">Return to Home</a>
+    </div>
+</div>
+{% endblock %}

@@ -16,6 +16,7 @@ options table:
 
 
 stopped:
+test review
 persist sign in
 test display (how it looks, storing answers somewhere, test finish screen)
 
