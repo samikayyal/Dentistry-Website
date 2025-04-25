@@ -38,12 +38,10 @@
                             Welcome, {{ user.email }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
                         </ul>
-                        <ul class="navbar-nav">
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('auth.profile') }}">Profile</a>
-                            </li>
+
                     </li>
                     {% else %}
                     <li class="nav-item">
@@ -60,31 +58,36 @@
     </nav>
 
     <div class="container main-content">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="mt-3">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-
         <main class="mt-4">
             {% block content %}{% endblock %}
         </main>
     </div>
 
-    <!-- <footer class="footer mt-auto py-3 bg-light">
-        <div class="container text-center">
-            <span class="text-muted">© 2025 Dentistry Pro. All rights reserved.</span>
-        </div>
-    </footer> -->
+    <div id="bottom-flash-container" style="position: fixed; left: 0; right: 0; bottom: 24px; z-index: 1080; display: flex; flex-direction: column; align-items: center; pointer-events: none;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="min-width: 320px; max-width: 90vw; margin-bottom: 0.5rem; pointer-events: auto;">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-dismiss flash messages after 4 seconds
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                document.querySelectorAll('#bottom-flash-container .alert').forEach(function (el) {
+                    var alert = bootstrap.Alert.getOrCreateInstance(el);
+                    alert.close();
+                });
+            }, 4000);
+        });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 

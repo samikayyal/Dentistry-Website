@@ -60,6 +60,12 @@ class __SelectedQuestions:
     def get_user_answers(self) -> dict[int, list[int]]:
         """Returns the dictionary of user answers."""
         return self.__user_answers
+    
+    def get_selected_topic(self) -> str:
+        """Returns the topic of the selected questions."""
+        if self.__selected_questions:
+            return self.__selected_questions[0].topic
+        return ""
 
 
 selected_questions = __SelectedQuestions(

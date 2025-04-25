@@ -16,8 +16,6 @@ options table:
 
 
 stopped:
-persist sign in
-test display (how it looks, storing answers somewhere, test finish screen)
 
 TODO:
 i dont like how flash() looks tbh

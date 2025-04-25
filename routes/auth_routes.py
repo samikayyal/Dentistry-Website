@@ -9,7 +9,9 @@ from flask import (
     url_for,
 )
 
+from routes.base_routes import login_required
 from utils.supabase_utils import is_valid_credentails_for_signup
+from utils.utils import format_datetime
 
 # Create a blueprint for auth routes
 auth_bp = Blueprint("auth", __name__)
@@ -185,3 +187,84 @@ def auth_callback_google():
         print("Error during Google auth callback:", e)
         flash(f"Authentication failed: {e}. Please try again.", "danger")
         return redirect(url_for("auth.signin"))
+
+
+@auth_bp.route("/profile")
+@login_required
+def profile():
+    """
+    Route to display the user's profile information.
+    """
+    # Access the user from g object
+    user = g.user
+    print(user)
+    print(type(user.created_at))
+    user_created_at = (
+        format_datetime(str(user.created_at), method="month year") if user else None
+    )
+    return render_template("profile.html", user=user, user_created_at=user_created_at)
+
+
+@auth_bp.route("/profile/change_email", methods=["POST"])
+@login_required
+def change_email():
+    """
+    Route to change the user's email address.
+    """
+    new_email = request.form.get("new_email")
+    supabase = g.supabase_client
+    # Basic validation
+    if not new_email:
+        flash("New email is required.", "danger")
+        return redirect(url_for("auth.profile"))
+    try:
+        response = supabase.auth.update_user({"email": new_email})
+        if hasattr(response, "user") and response.user:
+            flash(
+                "Email updated successfully. Please check your new email for a confirmation link.",
+                "success",
+            )
+        else:
+            flash("Failed to update email. Please try again.", "danger")
+    except Exception as e:
+        flash(f"Failed to update email: {e}", "danger")
+    return redirect(url_for("auth.profile"))
+
+
+@auth_bp.route("/profile/change_password", methods=["POST"])
+@login_required
+def change_password():
+    """
+    Route to change the user's password.
+    """
+    current_password = request.form.get("current_password")
+    new_password = request.form.get("new_password")
+    confirm_new_password = request.form.get("confirm_new_password")
+    supabase = g.supabase_client
+    # Basic validation
+    if not current_password or not new_password or not confirm_new_password:
+        flash("All fields are required.", "danger")
+        return redirect(url_for("auth.profile"))
+    if new_password != confirm_new_password:
+        flash("New passwords do not match.", "danger")
+        return redirect(url_for("auth.profile"))
+    if len(new_password) < 8:
+        flash("New password must be at least 8 characters.", "danger")
+        return redirect(url_for("auth.profile"))
+    try:
+        # Re-authenticate user
+        user = supabase.auth.sign_in_with_password(
+            {"email": g.user.email, "password": current_password}
+        )
+        if not user or not user.user:
+            flash("Current password is incorrect.", "danger")
+            return redirect(url_for("auth.profile"))
+        # Update password
+        response = supabase.auth.update_user({"password": new_password})
+        if hasattr(response, "user") and response.user:
+            flash("Password updated successfully.", "success")
+        else:
+            flash("Failed to update password. Please try again.", "danger")
+    except Exception as e:
+        flash(f"Failed to update password: {e}", "danger")
+    return redirect(url_for("auth.profile"))

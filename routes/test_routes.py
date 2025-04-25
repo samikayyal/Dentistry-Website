@@ -111,6 +111,21 @@ def test_results():
     else:
         percentage = round((num_correct / total_questions) * 100)
 
+    # Store the test result in the database
+    topic = selected_questions.get_selected_topic()
+    try:
+        user_id = g.user.id
+        test_result = {
+            "user_id": user_id,
+            "topic": topic,
+            "num_questions": total_questions,
+            "num_correct_answers": num_correct,
+        }
+        g.supabase_client.table("user_test_results").insert(test_result).execute()
+    except Exception as e:
+        print(f"Error storing test result: {e}")
+        flash("Error storing test result.", "danger")
+
     return render_template(
         "results.html",
         user=g.user,
@@ -146,7 +161,7 @@ def test_history():
     """
     history = get_test_history(g.supabase_client)
     for record in history:
-        record["submitted_at"] = format_datetime(record["submitted_at"])
+        record["submitted_at"] = format_datetime(record["submitted_at"], method='month day, year')
         percentage = record["num_correct_answers"] / record["num_questions"] * 100
         record["percentage"] = round(percentage) if percentage else 0
 
