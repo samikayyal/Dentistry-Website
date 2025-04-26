@@ -5,18 +5,22 @@ from dotenv import load_dotenv
 from flask import Flask, g, session
 
 from routes import auth_bp, base_bp, test_bp
-
-# from utils.local_db_utils import get_table_names
 from utils.supabase_utils import get_supabase_client
 
-load_dotenv()
+# Load environment variables from .env file only in development
+if os.path.exists('.env'):
+    load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "generate-a-secure-secret-key")
 app.permanent_session_lifetime = timedelta(days=30)
 
+# Check if we're in production
+is_production = os.getenv("RENDER", False) or os.getenv("FLASK_ENV", "").lower() == "production"
+
+# Configure session based on environment
 app.config.update(
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SECURE=is_production,  # Only require HTTPS in production
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
 )
@@ -85,9 +89,8 @@ app.register_blueprint(test_bp, url_prefix="")
 
 
 if __name__ == "__main__":
-    # print("Registered routes:")
-    # print(app.url_map)
-
+    # For local development only
     debug = os.getenv("FLASK_ENV", "").lower() == "development"
-
-    app.run(debug=debug, host="0.0.0.0", port=5000)
+    port = int(os.getenv("PORT", 5000))
+    
+    app.run(debug=debug, host="0.0.0.0", port=port)

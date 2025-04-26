@@ -161,7 +161,6 @@ def auth_callback_google():
         supabase = g.supabase_client
         # Exchange the authorization code for a session
         session_response = supabase.auth.exchange_code_for_session({"auth_code": code})
-
         # Check if the session exchange was successful
         if session_response and session_response.user and session_response.session:
             # Store tokens in Flask session
