@@ -16,7 +16,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "generate-a-secure-secret-key")
 app.permanent_session_lifetime = timedelta(days=30)
 
 # Check if we're in production
-is_production = os.getenv("RENDER", False) or os.getenv("FLASK_ENV", "").lower() == "production"
+is_production = os.getenv("FLASK_ENV", "").lower() == "production"
 
 # Configure session based on environment
 app.config.update(
