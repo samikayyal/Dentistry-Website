@@ -10,7 +10,7 @@ from flask import (
 )
 
 from routes.base_routes import login_required
-from utils.supabase_utils import is_valid_credentails_for_signup
+from utils.supabase_utils import get_user_from_session, is_valid_credentails_for_signup
 from utils.utils import format_datetime
 
 # Create a blueprint for auth routes
@@ -50,7 +50,7 @@ def signup():
 
         return redirect(url_for("base.index"))
 
-    return render_template("signup.html")
+    return render_template("user_management/signup.html")
 
 
 @auth_bp.route("/signin", methods=["GET", "POST"])
@@ -92,7 +92,7 @@ def signin():
             flash("An error occurred during signin. Please try again.", "danger")
             return redirect(url_for("auth.signin"))
 
-    return render_template("signin.html")
+    return render_template("user_management/signin.html")
 
 
 @auth_bp.route("/logout")
@@ -201,7 +201,9 @@ def profile():
     user_created_at = (
         format_datetime(str(user.created_at), method="month year") if user else None
     )
-    return render_template("profile.html", user=user, user_created_at=user_created_at)
+    return render_template(
+        "user_management/profile.html", user=user, user_created_at=user_created_at
+    )
 
 
 @auth_bp.route("/profile/change_email", methods=["POST"])
@@ -267,3 +269,89 @@ def change_password():
     except Exception as e:
         flash(f"Failed to update password: {e}", "danger")
     return redirect(url_for("auth.profile"))
+
+
+@auth_bp.route("/forgot_password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email")
+        if not email:
+            flash("Email is required.", "danger")
+            return redirect(url_for("auth.forgot_password"))
+        try:
+            # Access the supabase client from the app context
+            redirect_url = url_for("auth.reset_password", _external=True)
+            supabase = g.supabase_client
+            supabase.auth.reset_password_for_email(
+                email,
+                options={
+                    "redirect_to": redirect_url,
+                },
+            )
+
+            flash(
+                "Password reset email sent successfully. Please check your inbox.",
+                "success",
+            )
+
+        except Exception as e:
+            print("Error during password reset:", e)
+            flash("An error occurred. Please try again.", "danger")
+            return redirect(url_for("auth.forgot_password"))
+
+        return redirect(url_for("auth.signin"))
+
+    return render_template("user_management/forgot_password.html")
+
+
+@auth_bp.route("/reset_password", methods=["GET", "POST"])
+def reset_password():
+    if request.method == "POST":
+        new_password = request.form.get("new_password")
+        confirm_new_password = request.form.get("confirm_password")
+        access_token = request.form.get("access_token")
+        refresh_token = request.form.get("refresh_token")
+
+        # Validation
+        if not new_password or not confirm_new_password:
+            flash("All fields are required.", "danger")
+            return redirect(url_for("auth.reset_password"))
+        if len(new_password) < 8:
+            flash("New password must be at least 8 characters.", "danger")
+            return redirect(url_for("auth.reset_password"))
+        if new_password != confirm_new_password:
+            flash("New passwords do not match.", "danger")
+            return redirect(url_for("auth.reset_password"))
+        if not access_token or not refresh_token:
+            flash(
+                "Missing recovery token. Please try the reset link again or request a new one.",
+                "danger",
+            )
+            return redirect(url_for("auth.forgot_password"))
+
+        try:
+            supabase = g.supabase_client
+            # Set the session with the provided access and refresh tokens
+            res = supabase.auth.set_session(access_token, refresh_token)
+
+            if not res.user:
+                flash(
+                    "Invalid or expired recovery token. Please request a new one.",
+                    "danger",
+                )
+                return redirect(url_for("auth.forgot_password"))
+
+            # Now we can update the password
+            response = supabase.auth.update_user({"password": new_password})
+            if hasattr(response, "user") and response.user:
+                flash("Password reset successfully. You can now sign in.", "success")
+                return redirect(url_for("auth.signin"))
+            else:
+                flash("Failed to reset password. Please try again.", "danger")
+
+        except Exception as e:
+            print("Error during password reset:", e)
+            flash("An error occurred. Please try again.", "danger")
+
+    # For GET requests, just render the template
+    return render_template("user_management/reset_password.html")

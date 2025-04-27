@@ -8,7 +8,7 @@ from routes import auth_bp, base_bp, test_bp
 from utils.supabase_utils import get_supabase_client
 
 # Load environment variables from .env file only in development
-if os.path.exists('.env'):
+if os.path.exists(".env"):
     load_dotenv()
 
 app = Flask(__name__)
@@ -92,5 +92,5 @@ if __name__ == "__main__":
     # For local development only
     debug = os.getenv("FLASK_ENV", "").lower() == "development"
     port = int(os.getenv("PORT", 5000))
-    
+
     app.run(debug=debug, host="0.0.0.0", port=port)
