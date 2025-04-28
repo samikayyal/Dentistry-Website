@@ -4,11 +4,9 @@ from flask import Blueprint, flash, g, render_template
 
 from utils.local_db_utils import get_topics
 
-# Create a blueprint for base routes
 base_bp = Blueprint("base", __name__)
 
 
-# Login required decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -29,6 +27,10 @@ def index():
     Home route that returns a welcome message and lists all topics.
     """
     topics = get_topics()
+    if "General" in topics:
+        # make it first in the list
+        topics.remove("General")
+        topics.insert(0, "General")
     if not topics:
         flash("No topics available.", "warning")
     return render_template("index.html", user=g.user, topics=topics)

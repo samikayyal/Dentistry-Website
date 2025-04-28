@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "generate-a-secure-secret-key")
 app.permanent_session_lifetime = timedelta(days=30)
 
-# Check if we're in production
+# Check if im in production
 is_production = os.getenv("FLASK_ENV", "").lower() == "production"
 
 # Configure session based on environment
@@ -36,10 +36,9 @@ def load_user():
     Attempts to restore session from Flask session cookie if available.
     Also makes the supabase client available in the g object.
     """
-    # Make supabase client available to all routes
+    # Make supabase client available global object
     g.supabase_client = supabase_client
 
-    # Initialize user as None
     g.user = None
     access_token = session.get("supabase_access_token")
     refresh_token = session.get("supabase_refresh_token")
@@ -89,7 +88,6 @@ app.register_blueprint(test_bp, url_prefix="")
 
 
 if __name__ == "__main__":
-    # For local development only
     debug = os.getenv("FLASK_ENV", "").lower() == "development"
     port = int(os.getenv("PORT", 5000))
 

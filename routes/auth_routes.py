@@ -10,10 +10,9 @@ from flask import (
 )
 
 from routes.base_routes import login_required
-from utils.supabase_utils import get_user_from_session, is_valid_credentails_for_signup
+from utils.supabase_utils import is_valid_credentails_for_signup
 from utils.utils import format_datetime
 
-# Create a blueprint for auth routes
 auth_bp = Blueprint("auth", __name__)
 
 
@@ -34,7 +33,6 @@ def signup():
             return redirect(url_for("auth.signup"))
 
         try:
-            # Access the supabase client from the app context
             supabase = g.supabase_client
             response = supabase.auth.sign_up({"email": email, "password": password})
 
@@ -66,7 +64,6 @@ def signin():
             flash("Email and password are required.", "warning")
             return redirect(url_for("auth.signin"))
         try:
-            # Access the supabase client from the app context
             supabase = g.supabase_client
             response = supabase.auth.sign_in_with_password(
                 {"email": email, "password": password}
@@ -88,7 +85,7 @@ def signin():
 
         except Exception as e:
             print("Error during signin:", e)
-            # TODO: Check for specific Supabase errors if possible, e.g., invalid credentials
+            # TODO: Check for specific Supabase errors if possible, like invalid credentials
             flash("An error occurred during signin. Please try again.", "danger")
             return redirect(url_for("auth.signin"))
 
@@ -105,18 +102,15 @@ def logout():
         try:
             # Access the supabase client from the app context
             supabase = g.supabase_client
-            # It's good practice to sign out the specific session if possible
-            # supabase.auth.sign_out(access_token) # Check Supabase docs for exact method if needed
             supabase.auth.sign_out()  # General sign out
         except Exception as e:
             print(f"Error during Supabase sign out: {e}")
-            # Continue with clearing local session anyway
 
     # Clear Flask session
     session.pop("supabase_access_token", None)
     session.pop("supabase_refresh_token", None)
     session.clear()  # Ensure everything is cleared
-    g.user = None  # Clear g.user as well
+    g.user = None
 
     flash("You have been logged out successfully.", "success")
     return redirect(url_for("auth.signin"))
@@ -128,9 +122,8 @@ def signin_google():
     Route to initiate Google OAuth sign-in.
     """
     try:
-        # Access the supabase client from the app context
         supabase = g.supabase_client
-        # Construct an absolute URL for the callback
+        # absolute URL for the callback
         redirect_url = url_for("auth.auth_callback_google", _external=True)
         sign_in_url = supabase.auth.sign_in_with_oauth(
             {"provider": "google", "options": {"redirect_to": redirect_url}}
@@ -157,7 +150,6 @@ def auth_callback_google():
             )
             return redirect(url_for("auth.signin"))
 
-        # Access the supabase client from the app context
         supabase = g.supabase_client
         # Exchange the authorization code for a session
         session_response = supabase.auth.exchange_code_for_session({"auth_code": code})
@@ -194,7 +186,6 @@ def profile():
     """
     Route to display the user's profile information.
     """
-    # Access the user from g object
     user = g.user
     print(user)
     print(type(user.created_at))
@@ -279,9 +270,8 @@ def forgot_password():
             flash("Email is required.", "danger")
             return redirect(url_for("auth.forgot_password"))
         try:
-            # Access the supabase client from the app context
-            redirect_url = url_for("auth.reset_password", _external=True)
             supabase = g.supabase_client
+            redirect_url = url_for("auth.reset_password", _external=True)
             supabase.auth.reset_password_for_email(
                 email,
                 options={
@@ -341,7 +331,7 @@ def reset_password():
                 )
                 return redirect(url_for("auth.forgot_password"))
 
-            # Now we can update the password
+            # Now update the password
             response = supabase.auth.update_user({"password": new_password})
             if hasattr(response, "user") and response.user:
                 flash("Password reset successfully. You can now sign in.", "success")

@@ -14,7 +14,6 @@ from utils.question_class import (  # Import selected_questions
 from utils.supabase_utils import get_test_history
 from utils.utils import format_datetime
 
-# Create a blueprint for test routes
 test_bp = Blueprint("test", __name__)
 
 
@@ -30,32 +29,31 @@ def test_config(topic):
         flash("Invalid topic selected.", "danger")
         return redirect(url_for("base.index"))
 
-    # Get the maximum number of questions available for this topic
+    # get the maximum number of questions available for this topic
     max_questions = get_num_questions_topic(topic)
-    # Ensure we have at least 1 question available
+    # make sure at least 1 question available
     max_questions = max(1, max_questions)
 
     if request.method == "POST":
         num_questions = int(request.form.get("num_questions", 5))
-        # Limit num_questions to available questions
         num_questions = min(num_questions, max_questions)
+        
         duration = int(request.form.get("duration", 10))  # in minutes
-        # Fetch questions for the topic
+        
         questions = get_questions_for_topic(topic, num_questions)
-        # Store questions in our global state manager
+        
         selected_questions.add_questions(questions)
-        # Store config in session or pass to test page (not implemented here)
-        # TODO: Store duration in session or pass differently if needed across requests
+        # TODO: what to do if time runs out
         return render_template(
             "test_page.html",
             topic=topic,
-            questions=selected_questions.get_selected_questions(),  # Get questions from state
+            questions=selected_questions.get_selected_questions(),
             duration=duration,
             user=g.user,
             QuestionType=QuestionType,
         )
 
-    # Default values for form - ensure default is not greater than max
+    # Default values for form, ensure default is not greater than max
     default_num_questions = min(5, max_questions)
     return render_template(
         "test_config.html",
@@ -82,12 +80,12 @@ def submit_test():
                 user_answer = [int(val) for val in answer_values]
                 selected_questions.update_answer(question_id, user_answer)
             except (ValueError, IndexError):
-                # Handle potential errors if form data is malformed
+                # Handle potential errors if form data is fucked up
                 flash(
                     f"Invalid answer format received for {question_id_str}.", "warning"
                 )
-                # Decide how to handle this - maybe redirect back to test?
-                # For now, we'll just skip this answer.
+                # TODO: Decide how to handle this, maybe redirect back to test?
+                # now, we'll just skip this answer.
 
     # Redirect to the results page
     return redirect(url_for("test.test_results"))
@@ -135,7 +133,6 @@ def test_results():
     )
 
 
-# Add route for reviewing completed test answers
 @test_bp.route("/review")
 @login_required
 def review():

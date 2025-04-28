@@ -39,17 +39,12 @@ def get_user_from_session(supabase_client: supabase.Client) -> dict | None:
         # Get the current session using the current API from the passed client
         user_response = supabase_client.auth.get_user()
 
-        # Check the structure of the response, it might be user_response.user
+        # Check the structure of the response
         if user_response and hasattr(user_response, "user") and user_response.user:
             return user_response.user
-        # Add a check if the response itself is the user object (API might vary)
+        # If the user_response is not structured as like dict check for id
         elif user_response and not hasattr(user_response, "user"):
-            # This case might occur depending on the exact client version/state
-            # You might need to inspect user_response structure if the above fails
-            print("Direct user object received from get_user():", user_response)
-            # Assuming user_response directly contains user data
-            # Adjust this based on actual object structure if needed
-            if hasattr(user_response, "id"):  # Basic check for user-like object
+            if hasattr(user_response, "id"):
                 return user_response
 
     except Exception as e:
