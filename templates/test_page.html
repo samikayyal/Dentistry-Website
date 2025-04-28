@@ -5,8 +5,8 @@
 {% block content %}
 <div class="container py-4">
     <h2 class="mb-3 text-center">Test: <span class="text-primary">{{ topic }}</span></h2>
-    <div class="alert alert-info text-center mb-4" role="alert">
-        Time remaining: <span id="timer" class="fw-bold"></span>
+    <div class="text-center mb-4">
+        <h4 class="mb-0">Time remaining: <span id="timer" class="fw-bold"></span></h4>
     </div>
     <form id="test-form" method="post" action="{{ url_for('test.submit_test') }}">
         {% for q in questions %}
@@ -53,6 +53,23 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<style>
+    @keyframes blink {
+
+        0%,
+        100% {
+            color: red;
+        }
+
+        50% {
+            color: transparent;
+        }
+    }
+
+    .blink-red {
+        animation: blink 1s step-end infinite;
+    }
+</style>
 <script>
     let duration = Number('{{ duration }}') * 60;
     const timerElem = document.getElementById('timer');
@@ -62,6 +79,9 @@
         const min = Math.floor(duration / 60);
         const sec = duration % 60;
         timerElem.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+        if (duration <= 300) {
+            timerElem.classList.add('blink-red');
+        }
         if (duration > 0) {
             duration--;
         } else {
