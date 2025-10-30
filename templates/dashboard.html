@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                {% if is_guest %}
+                    Welcome, Guest!
+                {% else %}
+                    Welcome back!
+                {% endif %}
+            </h1>
+            {% if is_guest %}
+                <p class="text-gray-400">
+                    Today's topic: <span class="text-purple-400 font-semibold">{{ topics[0] if topics else 'Loading...' }}</span>
+                </p>
+                <p class="text-sm mt-2 {% if guest_attempts_remaining > 0 %}text-blue-400{% else %}text-red-400{% endif %}">
+                    📝 Attempts remaining today: <span class="font-bold">{{ guest_attempts_remaining or 0 }}/3</span>
+                </p>
+                {% if guest_attempts_remaining == 0 %}
+                    <p class="text-red-400 text-sm mt-1">
+                        ⚠️ You've used all your guest attempts for today. 
+                        <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline font-semibold">Sign up</a> for unlimited access!
+                    </p>
+                {% else %}
+                    <p class="text-yellow-500 text-sm mt-2">
+                        🔒 Guest users can only practice one topic per day. 
+                        <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline">Sign up</a> for full access!
+                    </p>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Quiz Setup Form -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
+                    <h2 class="text-2xl font-bold text-white mb-6">Start a New Quiz</h2>
+                    
+                    <form method="POST" action="{{ url_for('start_quiz') }}" class="space-y-6">
+                        <!-- Topic Selection -->
+                        <div>
+                            <label for="topic" class="block text-sm font-medium text-gray-300 mb-2">
+                                Select Topic
+                            </label>
+                            {% if is_guest %}
+                                <!-- For guests, just show the topic (read-only) -->
+                                <input type="hidden" name="topic" value="{{ topics[0] if topics else '' }}">
+                                <div class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white">
+                                    {{ topics[0] if topics else 'No topic available' }}
+                                </div>
+                            {% else %}
+                                <!-- For authenticated users, show dropdown -->
+                                <select id="topic" 
+                                        name="topic" 
+                                        required
+                                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="">Choose a topic...</option>
+                                    {% for topic in topics %}
+                                        <option value="{{ topic }}">{{ topic }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+
+                        <!-- Number of Questions -->
+                        <div>
+                            <label for="num_questions" class="block text-sm font-medium text-gray-300 mb-2">
+                                Number of Questions
+                            </label>
+                            <div class="grid grid-cols-4 gap-4">
+                                {% for num in [10, 25, 50, 100] %}
+                                    <label class="relative flex items-center justify-center">
+                                        <input type="radio" 
+                                               name="num_questions" 
+                                               value="{{ num }}" 
+                                               {% if num == 10 %}checked{% endif %}
+                                               class="sr-only peer">
+                                        <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300">
+                                            {{ num }}
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Time Limit -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Time Limit (Optional)
+                            </label>
+                            <div class="grid grid-cols-5 gap-4">
+                                <label class="relative flex items-center justify-center">
+                                    <input type="radio" 
+                                           name="time_limit" 
+                                           value="" 
+                                           checked
+                                           class="sr-only peer">
+                                    <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300 text-sm">
+                                        None
+                                    </div>
+                                </label>
+                                {% for time in [15, 30, 45, 60] %}
+                                    <label class="relative flex items-center justify-center">
+                                        <input type="radio" 
+                                               name="time_limit" 
+                                               value="{{ time }}" 
+                                               class="sr-only peer">
+                                        <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300 text-sm">
+                                            {{ time }}m
+                                        </div>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" 
+                                {% if is_guest and guest_attempts_remaining == 0 %}disabled{% endif %}
+                                class="w-full {% if is_guest and guest_attempts_remaining == 0 %}bg-gray-600 cursor-not-allowed{% else %}bg-purple-600 hover:bg-purple-700{% endif %} text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-lg">
+                            {% if is_guest and guest_attempts_remaining == 0 %}
+                                No Attempts Remaining 🔒
+                            {% else %}
+                                Start Quiz 🚀
+                            {% endif %}
+                        </button>
+                        {% if is_guest and guest_attempts_remaining == 0 %}
+                            <p class="text-center text-gray-400 text-sm mt-2">
+                                <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline font-semibold">Create a free account</a> to continue practicing!
+                            </p>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- Statistics Panel (for authenticated users only) -->
+            {% if not is_guest and stats %}
+            <div class="lg:col-span-1">
+                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
+                    <h2 class="text-2xl font-bold text-white mb-6">Your Statistics</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <p class="text-gray-400 text-sm">Total Quizzes</p>
+                            <p class="text-3xl font-bold text-white">{{ stats.total_quizzes or 0 }}</p>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <p class="text-gray-400 text-sm">Average Score</p>
+                            <p class="text-3xl font-bold text-purple-400">{{ stats.average_score or 0 }}%</p>
+                        </div>
+                        
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <p class="text-gray-400 text-sm">Best Score</p>
+                            <p class="text-3xl font-bold text-green-400">{{ stats.best_score or 0 }}%</p>
+                        </div>
+
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <p class="text-gray-400 text-sm">Overall Accuracy</p>
+                            <p class="text-3xl font-bold text-blue-400">{{ stats.overall_accuracy or 0 }}%</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <a href="{{ url_for('history') }}" 
+                           class="block w-full text-center bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                            View History
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Logout -->
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('logout') }}" 
+               class="text-gray-400 hover:text-white transition duration-300">
+                Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

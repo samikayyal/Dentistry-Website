@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Login / Sign Up - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <h2 class="text-3xl font-extrabold text-white">
+                Dentistry Quiz
+            </h2>
+            <p class="mt-2 text-sm text-gray-400">
+                Test your dentistry knowledge
+            </p>
+        </div>
+
+        <!-- Toggle Tabs -->
+        <div class="flex border-b border-gray-700">
+            <button id="loginTab" 
+                    class="flex-1 py-3 px-4 text-center font-semibold text-white border-b-2 border-purple-600"
+                    onclick="showLogin()">
+                Login
+            </button>
+            <button id="signupTab" 
+                    class="flex-1 py-3 px-4 text-center font-semibold text-gray-400 border-b-2 border-transparent hover:text-white"
+                    onclick="showSignup()">
+                Sign Up
+            </button>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="bg-gray-800 rounded-lg shadow-xl p-8">
+            <form method="POST" action="{{ url_for('login') }}" class="space-y-6">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-300">
+                        Email address
+                    </label>
+                    <input id="login-email" 
+                           name="email" 
+                           type="email" 
+                           required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
+                           placeholder="Enter your email">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-300">
+                        Password
+                    </label>
+                    <input id="login-password" 
+                           name="password" 
+                           type="password" 
+                           required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
+                           placeholder="Enter your password">
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-300">
+                        Sign in
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-gray-800 text-gray-400">Or</span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <a href="{{ url_for('guest_login') }}" 
+                       class="w-full flex justify-center py-2 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 transition duration-300">
+                        Continue as Guest
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signup Form -->
+        <div id="signupForm" class="bg-gray-800 rounded-lg shadow-xl p-8 hidden">
+            <form method="POST" action="{{ url_for('signup') }}" class="space-y-6" onsubmit="return validateSignup()">
+                <div>
+                    <label for="signup-email" class="block text-sm font-medium text-gray-300">
+                        Email address
+                    </label>
+                    <input id="signup-email" 
+                           name="email" 
+                           type="email" 
+                           required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
+                           placeholder="Enter your email">
+                </div>
+                <div>
+                    <label for="signup-password" class="block text-sm font-medium text-gray-300">
+                        Password
+                    </label>
+                    <input id="signup-password" 
+                           name="password" 
+                           type="password" 
+                           required 
+                           minlength="8"
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
+                           placeholder="At least 8 characters">
+                </div>
+                <div>
+                    <label for="signup-confirm-password" class="block text-sm font-medium text-gray-300">
+                        Confirm Password
+                    </label>
+                    <input id="signup-confirm-password" 
+                           name="confirm_password" 
+                           type="password" 
+                           required 
+                           minlength="8"
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
+                           placeholder="Confirm your password">
+                </div>
+
+                <!-- Info Box -->
+                <div class="p-3 bg-purple-900 bg-opacity-30 border border-purple-500 rounded-md">
+                    <p class="text-xs text-purple-200 flex items-center">
+                        <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        You'll receive a 6-digit verification code via email after signing up
+                    </p>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-300">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-gray-800 text-gray-400">Or</span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <a href="{{ url_for('guest_login') }}" 
+                       class="w-full flex justify-center py-2 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 transition duration-300">
+                        Continue as Guest
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="text-center">
+            <a href="{{ url_for('index') }}" class="text-sm text-purple-400 hover:text-purple-300">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLogin() {
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('loginTab').classList.add('border-purple-600', 'text-white');
+    document.getElementById('loginTab').classList.remove('border-transparent', 'text-gray-400');
+    document.getElementById('signupTab').classList.remove('border-purple-600', 'text-white');
+    document.getElementById('signupTab').classList.add('border-transparent', 'text-gray-400');
+}
+
+function showSignup() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('signupTab').classList.add('border-purple-600', 'text-white');
+    document.getElementById('signupTab').classList.remove('border-transparent', 'text-gray-400');
+    document.getElementById('loginTab').classList.remove('border-purple-600', 'text-white');
+    document.getElementById('loginTab').classList.add('border-transparent', 'text-gray-400');
+}
+
+function validateSignup() {
+    const password = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
+    
+    if (password !== confirmPassword) {
+        alert('Passwords do not match!');
+        return false;
+    }
+
+    if (password.length < 8) {
+        alert('Password must be at least 8 characters long!');
+        return false;
+    }
+    
+    return true;
+}
+</script>
+{% endblock %}

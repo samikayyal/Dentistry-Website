@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dentistry Quiz App{% endblock %}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    
+    <!-- Configure Tailwind with custom colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: 'rgb(86, 42, 67)',
+                            light: 'rgb(106, 52, 82)',
+                            dark: 'rgb(66, 32, 51)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('index') }}" class="text-2xl font-bold text-primary">
+                    🦷 Dentistry Quiz
+                </a>
+                
+                <div class="space-x-4">
+                    {% if session.get('user ') %}
+                        <a href="{{ url_for('dashboard') }}" class="hover:text-primary transition">Dashboard</a>
+                        <a href="{{ url_for('history') }}" class="hover:text-primary transition">History</a>
+                        <a href="{{ url_for('logout') }}" class="hover:text-primary transition">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('auth') }}" class="hover:text-primary transition">Sign In</a>
+                        <a href="{{ url_for('guest_login') }}" class="px-4 py-2 bg-primary rounded hover:bg-primary-light transition">
+                            Try as Guest
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-4 mt-4">
+                {% for category, message in messages %}
+                    <div class="p-4 rounded {% if category == 'success' %}bg-green-900 border-green-700{% elif category == 'error' %}bg-red-900 border-red-700{% else %}bg-blue-900 border-blue-700{% endif %} border">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 mt-16">
+        <div class="container mx-auto px-4 py-6 text-center text-gray-400">
+            <p>&copy; 2025 Dentistry Quiz Application. Built for dentistry students.</p>
+            <p class="text-sm mt-2">Practice makes perfect! 🦷</p>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

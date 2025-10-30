@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Results - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Results Header -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8 mb-6 text-center">
+            {% if results.score >= 90 %}
+                <h1 class="text-4xl font-bold text-green-400 mb-4">🎉 Outstanding!</h1>
+            {% elif results.score >= 70 %}
+                <h1 class="text-4xl font-bold text-blue-400 mb-4">👍 Great Job!</h1>
+            {% elif results.score >= 50 %}
+                <h1 class="text-4xl font-bold text-yellow-400 mb-4">💪 Keep Practicing!</h1>
+            {% else %}
+                <h1 class="text-4xl font-bold text-orange-400 mb-4">📚 Keep Learning!</h1>
+            {% endif %}
+
+            <div class="mb-6">
+                <p class="text-6xl font-bold text-purple-400">{{ results.score }}%</p>
+                <p class="text-gray-400 mt-2">
+                    {{ results.correct_answers }} out of {{ results.total_questions }} correct
+                </p>
+            </div>
+
+            {% if time_formatted %}
+            <div class="flex justify-center items-center text-gray-400">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Time taken: {{ time_formatted }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Question Review -->
+        {% if quiz_data %}
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
+            <h2 class="text-2xl font-bold text-white mb-6">Question Review</h2>
+            
+            {% for question in quiz_data.questions %}
+            {% set user_answer_id = quiz_data.answers.get(question.id) %}
+            {% set correct_option = question.options | selectattr('is_correct') | first %}
+            {% set user_option = question.options | selectattr('id', 'equalto', user_answer_id) | first if user_answer_id else none %}
+            {% set is_correct = user_option and user_option.is_correct %}
+            
+            <div class="mb-6 p-4 rounded-lg {% if is_correct %}bg-green-900 bg-opacity-20 border border-green-600{% else %}bg-red-900 bg-opacity-20 border border-red-600{% endif %}">
+                <div class="flex items-start mb-3">
+                    <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full {% if is_correct %}bg-green-600{% else %}bg-red-600{% endif %} text-white font-bold mr-3">
+                        {{ loop.index }}
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-white font-medium">{{ question.question }}</p>
+                    </div>
+                </div>
+
+                {% if question.image_url %}
+                <div class="mb-3 ml-11">
+                    <img src="{{ question.image_url }}" 
+                         alt="Question image" 
+                         class="max-w-sm h-auto rounded-lg border border-gray-600">
+                </div>
+                {% endif %}
+
+                <div class="ml-11 space-y-2">
+                    {% for option in question.options %}
+                    <div class="p-3 rounded-md {% if option.id == user_answer_id %}{% if option.is_correct %}bg-green-700{% else %}bg-red-700{% endif %}{% elif option.is_correct %}bg-green-700 bg-opacity-50{% else %}bg-gray-700{% endif %}">
+                        <div class="flex items-center">
+                            {% if option.id == user_answer_id %}
+                                {% if option.is_correct %}
+                                    <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="text-green-300 text-sm mr-2">Your answer (Correct)</span>
+                                {% else %}
+                                    <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="text-red-300 text-sm mr-2">Your answer (Incorrect)</span>
+                                {% endif %}
+                            {% elif option.is_correct %}
+                                <svg class="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="text-green-300 text-sm mr-2">Correct answer</span>
+                            {% endif %}
+                            <span class="text-white">{{ option.option }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if not user_answer_id %}
+                    <div class="text-yellow-400 text-sm italic">
+                        ⚠️ You did not answer this question
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif results.answers %}
+        <!-- For authenticated users viewing history -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
+            <h2 class="text-2xl font-bold text-white mb-6">Question Review</h2>
+            <p class="text-gray-400">Detailed question review available for recently completed quizzes.</p>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="flex gap-4 justify-center">
+            <a href="{{ url_for('dashboard') }}" 
+               class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-300">
+                Back to Dashboard
+            </a>
+            
+            {% if is_guest %}
+            <a href="{{ url_for('auth') }}" 
+               class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-300">
+                Sign Up for Full Access
+            </a>
+            {% endif %}
+        </div>
+
+        {% if is_guest %}
+        <div class="mt-6 text-center">
+            <p class="text-yellow-500">
+                🔒 Sign up to save your results and track your progress over time!
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16">
+    <!-- Hero Section -->
+    <div class="text-center mb-16">
+        <h1 class="text-5xl font-bold mb-6 text-primary">
+            🦷 Dentistry Quiz Application
+        </h1>
+        <p class="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
+            Enhance your dentistry knowledge with interactive quizzes covering 8 major topics. 
+            Practice with 4,700+ questions designed for students and practitioners.
+        </p>
+        
+        <div class="flex gap-4 justify-center">
+            <a href="{{ url_for('auth') }}" class="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-light transition text-lg font-semibold">
+                Get Started
+            </a>
+            <a href="{{ url_for('guest_login') }}" class="px-8 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition text-lg font-semibold">
+                Try as Guest
+            </a>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="grid md:grid-cols-3 gap-8 mt-16">
+        <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <div class="text-4xl mb-4">📚</div>
+            <h3 class="text-xl font-semibold mb-2">4,700+ Questions</h3>
+            <p class="text-gray-400">Comprehensive question bank across 8 dentistry topics</p>
+        </div>
+        
+        <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <div class="text-4xl mb-4">⏱️</div>
+            <h3 class="text-xl font-semibold mb-2">Timed Quizzes</h3>
+            <p class="text-gray-400">Optional time limits to simulate exam conditions</p>
+        </div>
+        
+        <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+            <div class="text-4xl mb-4">📊</div>
+            <h3 class="text-xl font-semibold mb-2">Track Progress</h3>
+            <p class="text-gray-400">View detailed history and statistics of your performance</p>
+        </div>
+    </div>
+
+    <!-- Topics Section -->
+    <div class="mt-16">
+        <h2 class="text-3xl font-bold text-center mb-8">Available Topics</h2>
+        <div class="grid md:grid-cols-4 gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Operative Dentistry
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Periodontology
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Occlusion/Odontology
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Orthodontics
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Endodontics
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Oral Surgery
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Pathology
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 text-center hover:border-primary transition">
+                Anatomy
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="mt-16 text-center bg-gray-800 p-12 rounded-lg border border-gray-700">
+        <h2 class="text-3xl font-bold mb-4">Ready to Test Your Knowledge?</h2>
+        <p class="text-gray-300 mb-6">Join thousands of dentistry students improving their skills</p>
+        <a href="{{ url_for('auth') }}" class="inline-block px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary-light transition text-lg font-semibold">
+            Sign Up Now
+        </a>
+    </div>
+</div>
+{% endblock %}

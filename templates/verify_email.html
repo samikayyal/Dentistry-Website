@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Email - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-purple-600 mb-4">
+                <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h2 class="text-3xl font-extrabold text-white">
+                Verify Your Email
+            </h2>
+            <p class="mt-2 text-sm text-gray-400">
+                We sent a 6-digit verification code to
+            </p>
+            <p class="text-purple-400 font-semibold">{{ email }}</p>
+        </div>
+
+        <!-- Verification Form -->
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8">
+            <form method="POST" action="{{ url_for('verify_email') }}" class="space-y-6" id="verifyForm">
+                <div>
+                    <label for="otp_code" class="block text-sm font-medium text-gray-300 mb-2">
+                        Enter Verification Code
+                    </label>
+                    <input 
+                        id="otp_code" 
+                        name="otp_code" 
+                        type="text" 
+                        required 
+                        maxlength="6"
+                        pattern="[0-9]{6}"
+                        inputmode="numeric"
+                        autocomplete="one-time-code"
+                        class="appearance-none relative block w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10"
+                        placeholder="000000"
+                        autofocus>
+                    <p class="mt-2 text-xs text-gray-400">
+                        Enter the 6-digit code from your email
+                    </p>
+                </div>
+
+                <div>
+                    <button 
+                        type="submit" 
+                        class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-300">
+                        Verify Email
+                    </button>
+                </div>
+            </form>
+
+            <!-- Resend Code -->
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-400 mb-3">
+                    Didn't receive the code?
+                </p>
+                <form method="POST" action="{{ url_for('resend_verification_code') }}" class="inline">
+                    <button 
+                        type="submit"
+                        id="resendBtn"
+                        class="text-purple-400 hover:text-purple-300 font-semibold transition duration-300">
+                        Resend Code
+                    </button>
+                </form>
+                <p id="resendTimer" class="text-xs text-gray-500 mt-2"></p>
+            </div>
+
+            <!-- Help Text -->
+            <div class="mt-6 p-4 bg-gray-700 rounded-lg">
+                <h3 class="text-sm font-semibold text-white mb-2">Tips:</h3>
+                <ul class="text-xs text-gray-400 space-y-1">
+                    <li>• Check your spam/junk folder</li>
+                    <li>• The code expires in 60 minutes</li>
+                    <li>• Make sure you entered the correct email</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Back to Login -->
+        <div class="text-center">
+            <a href="{{ url_for('auth') }}" class="text-sm text-purple-400 hover:text-purple-300">
+                ← Back to Login
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-format OTP input
+document.getElementById('otp_code').addEventListener('input', function(e) {
+    this.value = this.value.replace(/\D/g, '');
+    if (this.value.length === 6) {
+        // Auto-submit after 6 digits (optional)
+        // document.getElementById('verifyForm').submit();
+    }
+});
+
+// Resend cooldown timer
+let cooldownSeconds = 60;
+let cooldownActive = false;
+
+function startCooldown() {
+    if (cooldownActive) return;
+    
+    cooldownActive = true;
+    const resendBtn = document.getElementById('resendBtn');
+    const resendTimer = document.getElementById('resendTimer');
+    
+    resendBtn.disabled = true;
+    resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    const interval = setInterval(() => {
+        cooldownSeconds--;
+        resendTimer.textContent = `Resend available in ${cooldownSeconds}s`;
+        
+        if (cooldownSeconds <= 0) {
+            clearInterval(interval);
+            resendBtn.disabled = false;
+            resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            resendTimer.textContent = '';
+            cooldownSeconds = 60;
+            cooldownActive = false;
+        }
+    }, 1000);
+}
+
+// Start cooldown on page load
+window.addEventListener('DOMContentLoaded', function() {
+    // Check if we just came from signup or resend
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('resent') === 'true' || !sessionStorage.getItem('cooldown_started')) {
+        startCooldown();
+        sessionStorage.setItem('cooldown_started', 'true');
+    }
+});
+
+// Clear session storage on successful verification
+window.addEventListener('beforeunload', function() {
+    if (document.querySelector('.alert-success')) {
+        sessionStorage.removeItem('cooldown_started');
+    }
+});
+</script>
+{% endblock %}
