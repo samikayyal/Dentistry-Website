@@ -657,13 +657,21 @@ def submit_quiz(quiz_id):
     # Save results for authenticated users
     results = None
     if user:
+        # Convert time limit from minutes (UI/session) to seconds for persistence
+        time_limit_minutes = quiz_state.get("time_limit")
+        time_limit_seconds = (
+            int(time_limit_minutes) * 60
+            if isinstance(time_limit_minutes, int)
+            else None
+        )
+
         results = save_quiz_results(
             user_id=user["id"],
             topic=quiz_state["topic"],
             questions=questions,
             answers=quiz_state["answers"],
             time_taken=time_taken,
-            time_limit=quiz_state.get("time_limit"),
+            time_limit=time_limit_seconds,
         )
 
         if results:
@@ -878,14 +886,21 @@ def api_submit_quiz():
                 500,
             )
 
-        # Save results
+        # Save results (convert time limit from minutes to seconds)
+        time_limit_minutes = quiz_data.get("time_limit")
+        time_limit_seconds = (
+            int(time_limit_minutes) * 60
+            if isinstance(time_limit_minutes, int)
+            else None
+        )
+
         results = save_quiz_results(
             user_id=user["id"],
             topic=quiz_data["topic"],
             questions=questions,
             answers=answers,
             time_taken=time_taken,
-            time_limit=quiz_data.get("time_limit"),
+            time_limit=time_limit_seconds,
         )
 
         if results:
