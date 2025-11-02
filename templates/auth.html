@@ -2,6 +2,10 @@
 
 {% block title %}Login / Sign Up - Dentistry Quiz{% endblock %}
 
+{% block extra_head %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="min-h-screen flex items-center justify-center bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
@@ -54,6 +58,8 @@
                            class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
                            placeholder="Enter your password">
                 </div>
+
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAAB92oUsUk-16abST"></div>
 
                 <div>
                     <button type="submit" 
@@ -120,6 +126,8 @@
                            class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-600 placeholder-gray-500 text-white bg-gray-700 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
                            placeholder="Confirm your password">
                 </div>
+
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAAB92oUsUk-16abST"></div>
 
                 <!-- Info Box -->
                 <div class="p-3 bg-purple-900 bg-opacity-30 border border-purple-500 rounded-md">

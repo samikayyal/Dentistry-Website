@@ -368,9 +368,9 @@ function validatePassword(password) {
         errors: []
     };
     
-    if (password.length < 6) {
+    if (password.length < 8) {
         result.isValid = false;
-        result.errors.push('Password must be at least 6 characters long');
+        result.errors.push('Password must be at least 8 characters long');
     }
     
     return result;

@@ -2,9 +2,11 @@
 Database utility functions for interacting with Supabase
 """
 
+import logging
 import os
 import random
 from datetime import datetime
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -17,7 +19,11 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+# Logger
+logger = logging.getLogger(__name__)
 
+
+@lru_cache(25)
 def get_supabase_client() -> Client:
     """
     Create and return a Supabase client instance
@@ -43,7 +49,7 @@ def get_all_topics() -> List[str]:
         response = supabase.rpc("get_topics").execute()
         return [row["topic"] for row in response.data]
     except Exception as e:
-        print(f"Error fetching topics: {e}")
+        logger.exception("Error fetching topics: %s", e)
         return []
 
 
@@ -64,6 +70,13 @@ def get_questions_by_topic(
     try:
         supabase = get_supabase_client()
 
+        # Clamp limit to a safe range to protect database load
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(1, min(limit, 100))
+
         # Get random questions for the topic
         response = supabase.rpc(
             "get_random_questions", {"p_topic": topic, "p_limit": limit}
@@ -74,18 +87,41 @@ def get_questions_by_topic(
         if not include_options:
             return questions
 
-        # Fetch options for each question
-        # TODO: Optimize with batch fetching
+        # Optimized: Batch fetch all options in a single query instead of N+1 queries
+        if not questions:
+            return questions
+
+        # Extract question IDs
+        question_ids = [q["id"] for q in questions]
+
+        # Fetch all questions with their options in a single query
+        # This uses Supabase's relationship syntax to join options
+        batch_response = (
+            supabase.table("questions")
+            .select("id, topic, question, image_url, options(id, option, is_correct)")
+            .in_("id", question_ids)
+            .execute()
+        )
+
+        # Create a map of question_id -> question with options
+        questions_with_options = {q["id"]: q for q in batch_response.data}
+
+        # Attach options to original questions, preserving order from RPC call
         for question in questions:
-            options_response = supabase.rpc(
-                "get_question_options", {"p_question_id": question["id"]}
-            ).execute()
-            question["options"] = options_response.data
+            if question["id"] in questions_with_options:
+                question_with_options = questions_with_options[question["id"]]
+                # Sort options by ID for consistency
+                options = question_with_options.get("options", [])
+                options.sort(key=lambda opt: opt.get("id"))
+                question["options"] = options
+            else:
+                # Fallback: if question not found in batch, use empty options
+                question["options"] = []
 
         return questions
 
     except Exception as e:
-        print(f"Error fetching questions: {e}")
+        logger.exception("Error fetching questions: %s", e)
         return []
 
 
@@ -124,7 +160,7 @@ def get_questions_by_ids(question_ids: List[int]) -> List[Dict[str, Any]]:
         return ordered_questions
 
     except Exception as e:
-        print(f"Error fetching questions by IDs: {e}")
+        logger.exception("Error fetching questions by IDs: %s", e)
         return []
 
 
@@ -254,7 +290,7 @@ def save_quiz_results(
         }
 
     except Exception as e:
-        print(f"Error saving quiz results: {e}")
+        logger.exception("Error saving quiz results: %s", e)
         return None
 
 
@@ -278,7 +314,7 @@ def get_quiz_history(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         return response.data[:limit] if response.data else []
 
     except Exception as e:
-        print(f"Error fetching quiz history: {e}")
+        logger.exception("Error fetching quiz history: %s", e)
         return []
 
 
@@ -323,7 +359,7 @@ def get_quiz_details(quiz_id: int, user_id: str) -> Optional[Dict[str, Any]]:
         return quiz
 
     except Exception as e:
-        print(f"Error fetching quiz details: {e}")
+        logger.exception("Error fetching quiz details: %s", e)
         return None
 
 
@@ -389,7 +425,7 @@ def get_user_statistics(user_id: str) -> Dict[str, Any]:
             }
 
     except Exception as e:
-        print(f"Error fetching user statistics: {e}")
+        logger.exception("Error fetching user statistics: %s", e)
         return {
             "total_quizzes": 0,
             "average_score": 0,

@@ -40,7 +40,7 @@
                 </a>
                 
                 <div class="space-x-4">
-                    {% if session.get('user ') %}
+                    {% if session.get('user') %}
                         <a href="{{ url_for('dashboard') }}" class="hover:text-primary transition">Dashboard</a>
                         <a href="{{ url_for('history') }}" class="hover:text-primary transition">History</a>
                         <a href="{{ url_for('logout') }}" class="hover:text-primary transition">Logout</a>

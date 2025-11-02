@@ -3,9 +3,11 @@ Dentistry Quiz Application - Main Flask Application
 A web application for dentistry students to practice through interactive quizzes
 """
 
+import logging
 import os
 from datetime import datetime, timedelta
 
+import requests
 from dotenv import load_dotenv
 from flask import (
     Flask,
@@ -18,6 +20,8 @@ from flask import (
     url_for,
 )
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Load environment variables
 load_dotenv()
@@ -37,21 +41,89 @@ from utils.helpers import (  # noqa: E402
     format_time,
     generate_quiz_id,
 )
+from utils.validation import validate_email  # noqa: E402
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+if not app.secret_key:
+    raise ValueError(
+        "FLASK_SECRET_KEY environment variable is required. "
+        "Set it in your .env file or environment variables."
+    )
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
-# Enable CORS if needed
-CORS(app)
+# Request size limits (16MB max)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
+
+# Security: session cookie hardening
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
+
+# Configure logging and debug mode
+DEBUG_MODE = os.getenv("DEBUG", "False") == "True"
+logging.basicConfig(
+    level=logging.DEBUG if DEBUG_MODE else logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Enable CORS: restrict to explicit origins in production
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+if allowed_origins:
+    origins = [o.strip() for o in allowed_origins.split(",") if o.strip()]
+    CORS(app, resources={r"/*": {"origins": origins}}, supports_credentials=True)
+else:
+    # Default to enabling CORS only in debug for convenience
+    if DEBUG_MODE:
+        CORS(app)
+
+# Initialize rate limiter
+# Using in-memory storage (default) - suitable for single worker deployments
+# Rate limiting is automatically disabled when app.config["TESTING"] is True
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per minute"],
+    strategy="fixed-window",
+    enabled=lambda: not app.config.get("TESTING", False),  # type: ignore
+)
 
 # Initialize Supabase client
 try:
     supabase = get_supabase_client()
 except Exception as e:
-    print(f"Warning: Could not initialize Supabase client at startup: {e}")
+    logger.warning("Could not initialize Supabase client at startup: %s", e)
     supabase = None
+
+
+def verify_turnstile(request):
+    """Verify the Cloudflare Turnstile token."""
+    token = request.form.get("cf-turnstile-response")
+    ip = request.remote_addr
+    if DEBUG_MODE:
+        logger.debug("Verifying Turnstile token from IP: %s", ip)
+    if not token:
+        return False
+
+    try:
+        response = requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={
+                "secret": os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY"),
+                "response": token,
+                "remoteip": ip,
+            },
+            timeout=5,
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result.get("success", False)
+    except requests.RequestException as e:
+        logger.warning("Turnstile verification failed: %s", e)
+        return False
 
 
 def get_active_supabase_client():
@@ -66,13 +138,48 @@ def get_active_supabase_client():
         supabase = get_supabase_client()
         return supabase
     except Exception as exc:  # pragma: no cover - logged for diagnostics
-        print(f"Error obtaining Supabase client: {exc}")
+        logger.error("Error obtaining Supabase client: %s", exc)
         return None
 
 
 # ============================================================================
 # ROUTES - Landing Page
 # ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# Security headers
+# ----------------------------------------------------------------------------
+
+
+@app.after_request
+def add_security_headers(response):
+    """Add security-related HTTP headers and a conservative CSP.
+
+    Update the CSP if additional third-party assets are used.
+    """
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(), microphone=(), camera=()"
+    )
+
+    # Content Security Policy (CSP)
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.tailwindcss.com https://challenges.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "frame-src https://challenges.cloudflare.com https://*.challenges.cloudflare.com; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'"
+    )
+    if not DEBUG_MODE:
+        response.headers.setdefault("Content-Security-Policy", csp)
+    return response
 
 
 @app.route("/")
@@ -93,9 +200,14 @@ def auth():
 
 
 @app.route("/auth/signup", methods=["POST"])
+@limiter.limit("5 per minute")
 def signup():
     """Handle user registration"""
     try:
+        if not verify_turnstile(request):
+            flash("Captcha verification failed. Please try again.", "error")
+            return redirect(url_for("auth"))
+
         email = request.form.get("email")
         password = request.form.get("password")
         confirm_password = request.form.get("confirm_password")
@@ -105,12 +217,17 @@ def signup():
             flash("All fields are required.", "error")
             return redirect(url_for("auth"))
 
+        # Validate email format
+        if not validate_email(email):
+            flash("Please enter a valid email address.", "error")
+            return redirect(url_for("auth"))
+
         if password != confirm_password:
             flash("Passwords do not match.", "error")
             return redirect(url_for("auth"))
 
-        if len(password) < 6:
-            flash("Password must be at least 6 characters long.", "error")
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.", "error")
             return redirect(url_for("auth"))
 
         # Register user with Supabase
@@ -141,25 +258,39 @@ def signup():
             return redirect(url_for("auth"))
 
     except Exception as e:
-        print(f"Signup error: {e}")
+        logger.exception("Signup error: %s", e)
         error_message = str(e)
         if "User already registered" in error_message:
             flash("An account with this email already exists.", "error")
         else:
-            flash(f"An error occurred: {error_message}", "error")
+            # In production, show generic error; in debug, show details
+            if DEBUG_MODE:
+                flash(f"An error occurred: {error_message}", "error")
+            else:
+                flash("An error occurred. Please try again.", "error")
         return redirect(url_for("auth"))
 
 
 @app.route("/auth/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
     """Handle user login"""
     try:
+        if not verify_turnstile(request):
+            flash("Captcha verification failed. Please try again.", "error")
+            return redirect(url_for("auth"))
+
         email = request.form.get("email")
         password = request.form.get("password")
 
         # Validate inputs
         if not email or not password:
             flash("Email and password are required.", "error")
+            return redirect(url_for("auth"))
+
+        # Validate email format
+        if not validate_email(email):
+            flash("Please enter a valid email address.", "error")
             return redirect(url_for("auth"))
 
         # Authenticate with Supabase
@@ -189,12 +320,13 @@ def login():
             return redirect(url_for("auth"))
 
     except Exception as e:
-        print(f"Login error: {e}")
+        logger.warning("Login error: %s", e)
         flash("Invalid email or password.", "error")
         return redirect(url_for("auth"))
 
 
 @app.route("/auth/verify-email", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def verify_email():
     """Handle email verification with OTP"""
     pending = session.get("pending_verification")
@@ -242,7 +374,7 @@ def verify_email():
                 return render_template("verify_email.html", email=pending["email"])
 
         except Exception as e:
-            print(f"Verification error: {e}")
+            logger.warning("Verification error: %s", e)
             flash("Invalid or expired verification code. Please try again.", "error")
             return render_template("verify_email.html", email=pending["email"])
 
@@ -250,6 +382,7 @@ def verify_email():
 
 
 @app.route("/auth/resend-code", methods=["POST"])
+@limiter.limit("3 per minute")
 def resend_verification_code():
     """Resend verification code"""
     pending = session.get("pending_verification")
@@ -275,7 +408,7 @@ def resend_verification_code():
         return redirect(url_for("verify_email"))
 
     except Exception as e:
-        print(f"Resend error: {e}")
+        logger.warning("Resend error: %s", e)
         flash("Failed to resend verification code. Please try again.", "error")
         return redirect(url_for("verify_email"))
 
@@ -316,22 +449,6 @@ def guest_login():
     return redirect(url_for("dashboard"))
 
 
-@app.route("/auth/guest/reset")
-def reset_guest_attempts():
-    """Reset guest attempts for testing purposes (remove in production)"""
-    guest = session.get("guest")
-
-    if guest:
-        guest["attempts"] = 0
-        guest["date"] = datetime.now().date().isoformat()
-        session["guest"] = guest
-        flash("Guest attempts have been reset to 0 for testing.", "success")
-    else:
-        flash("No active guest session found.", "error")
-
-    return redirect(url_for("dashboard"))
-
-
 # ============================================================================
 # ROUTES - Dashboard
 # ============================================================================
@@ -360,6 +477,8 @@ def dashboard():
     # For guests, limit to daily topic only
     guest_attempts = 0
     guest_attempts_remaining = 0
+    if DEBUG_MODE:
+        logger.debug("Guest session: %s", guest)
     if guest and not user:
         topics = [guest["daily_topic"]]
         guest_attempts = guest.get("attempts", 0)
@@ -369,7 +488,7 @@ def dashboard():
         "dashboard.html",
         topics=topics,
         stats=stats,
-        is_guest=guest and not user,
+        is_guest=guest and guest["is_guest"] and not user,
         guest_attempts=guest_attempts,
         guest_attempts_remaining=guest_attempts_remaining,
     )
@@ -393,16 +512,25 @@ def start_quiz():
 
     # Get quiz parameters
     topic = request.form.get("topic")
-    num_questions = int(request.form.get("num_questions", 10))
-    time_limit = request.form.get("time_limit", None)
+    # Defensive parsing of numeric parameters
+    try:
+        num_questions = int(request.form.get("num_questions", 10))
+    except (TypeError, ValueError):
+        num_questions = 10
+    time_limit_raw = request.form.get("time_limit", None)
 
     # Validate topic exists
     if not topic:
         flash("Please select a topic.", "error")
         return redirect(url_for("dashboard"))
 
-    if time_limit:
-        time_limit = int(time_limit)
+    if time_limit_raw:
+        try:
+            time_limit = int(time_limit_raw)
+        except (TypeError, ValueError):
+            time_limit = None
+    else:
+        time_limit = None
 
     # Validate topic for guests
     if guest and not user:
@@ -411,7 +539,6 @@ def start_quiz():
         if guest_date != today_iso:
             guest["date"] = today_iso
             guest["attempts"] = 0
-            session["guest"] = guest
 
         if topic != guest["daily_topic"]:
             flash("Guests can only access today's topic.", "error")
@@ -446,7 +573,7 @@ def start_quiz():
 
     if guest and not user:
         guest["attempts"] = guest.get("attempts", 0) + 1
-        session["guest"] = guest and not user
+        session["guest"] = guest
 
     return redirect(url_for("quiz", quiz_id=quiz_id))
 
@@ -483,7 +610,8 @@ def quiz(quiz_id):
         int(key): value for key, value in quiz_data.get("answers", {}).items()
     }
 
-    print("Quiz Data:", {**quiz_data, "questions": [q["id"] for q in questions]})
+    if DEBUG_MODE:
+        logger.debug("Quiz %s loaded with %d questions", quiz_id, len(questions))
 
     return render_template(
         "quiz.html",
@@ -679,6 +807,7 @@ def history_detail(quiz_id):
 
 
 @app.route("/api/topics")
+@limiter.limit("100 per minute")
 def api_topics():
     """Get all available topics"""
     from utils.database import get_all_topics
@@ -687,11 +816,12 @@ def api_topics():
         topics = get_all_topics()
         return jsonify({"success": True, "topics": topics})
     except Exception as e:
-        print(f"Error fetching topics: {e}")
+        logger.exception("Error fetching topics: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/questions")
+@limiter.limit("100 per minute")
 def api_questions():
     """Get questions by topic"""
     from utils.database import get_questions_by_topic
@@ -706,11 +836,12 @@ def api_questions():
         questions = get_questions_by_topic(topic, limit)
         return jsonify({"success": True, "questions": questions})
     except Exception as e:
-        print(f"Error fetching questions: {e}")
+        logger.exception("Error fetching questions: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/quiz/submit", methods=["POST"])
+@limiter.limit("30 per minute")
 def api_submit_quiz():
     """Submit quiz answers (AJAX endpoint)"""
     from utils.database import save_quiz_results
@@ -768,11 +899,12 @@ def api_submit_quiz():
             )
 
     except Exception as e:
-        print(f"Error submitting quiz: {e}")
+        logger.exception("Error submitting quiz: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/stats")
+@limiter.limit("60 per minute")
 def api_stats():
     """Get user statistics"""
     from utils.database import get_user_statistics
@@ -786,7 +918,7 @@ def api_stats():
         stats = get_user_statistics(user["id"])
         return jsonify({"success": True, "stats": stats})
     except Exception as e:
-        print(f"Error fetching stats: {e}")
+        logger.exception("Error fetching stats: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -807,10 +939,47 @@ def internal_error(error):
     return render_template("500.html"), 500
 
 
+@app.errorhandler(413)
+def request_too_large(error):
+    """Handle 413 Request Entity Too Large errors"""
+    return (
+        jsonify(
+            {"success": False, "error": "Request too large. Maximum size is 16MB."}
+        ),
+        413,
+    )
+
+
+@app.route("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Optionally check database connection
+        client = get_active_supabase_client()
+        db_status = "connected" if client is not None else "disconnected"
+    except Exception:
+        db_status = "error"
+
+    return (
+        jsonify(
+            {
+                "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
+                "database": db_status,
+            }
+        ),
+        200,
+    )
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
 
 if __name__ == "__main__":
-    debug_mode = os.getenv("DEBUG", "True") == "True"
+    # Safer default is non-debug
+    debug_mode = os.getenv("DEBUG", "False") == "True"
+    if not debug_mode:
+        app.config["SESSION_COOKIE_SECURE"] = True
+    # In production, run behind a WSGI server like gunicorn
     app.run(debug=debug_mode, host="0.0.0.0", port=5000)
