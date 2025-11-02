@@ -33,7 +33,6 @@ def get_supabase_client() -> Client:
     """
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not found in environment variables")
-
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
@@ -46,7 +45,7 @@ def get_all_topics() -> List[str]:
     """
     try:
         supabase = get_supabase_client()
-        response = supabase.rpc("get_topics").execute()
+        response = supabase.rpc("get_topics", {}).execute()
         return [row["topic"] for row in response.data]
     except Exception as e:
         logger.exception("Error fetching topics: %s", e)
