@@ -18,7 +18,6 @@ load_dotenv()
 # Initialize Supabase client
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_SECRET = os.getenv("SUPABASE_SECRET")
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ def get_supabase_client() -> Client:
     Returns:
         Client: Supabase client instance
     """
-    if not SUPABASE_URL or not SUPABASE_KEY or not SUPABASE_SECRET:
+    if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not found in environment variables")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
