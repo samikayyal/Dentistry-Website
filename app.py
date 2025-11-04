@@ -196,7 +196,8 @@ def index():
 @app.route("/auth", methods=["GET"])
 def auth():
     """Authentication page (login/signup)"""
-    return render_template("auth.html")
+    turnstile_site_key = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "")
+    return render_template("auth.html", turnstile_site_key=turnstile_site_key)
 
 
 @app.route("/auth/signup", methods=["POST"])
