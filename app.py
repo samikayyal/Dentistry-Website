@@ -240,7 +240,16 @@ def signup():
             )
             return redirect(url_for("auth"))
 
-        response = client.auth.sign_up({"email": email, "password": password})
+        turnstile_token = request.form.get("cf-turnstile-response")
+        response = client.auth.sign_up(
+            {
+                "email": email,
+                "password": password,
+                "options": {
+                    "captcha_token": turnstile_token,
+                },
+            }
+        )
 
         if response.user:
             # Store email in session for verification
@@ -303,8 +312,15 @@ def login():
             )
             return redirect(url_for("auth"))
 
+        turnstile_token = request.form.get("cf-turnstile-response")
         response = client.auth.sign_in_with_password(
-            {"email": email, "password": password}
+            {
+                "email": email,
+                "password": password,
+                "options": {
+                    "captcha_token": turnstile_token,
+                },
+            }
         )
 
         if response.user:

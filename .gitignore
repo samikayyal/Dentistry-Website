@@ -71,3 +71,4 @@ question_extraction.py
 
 # Misc
 *.md
+requirements_old.txt
