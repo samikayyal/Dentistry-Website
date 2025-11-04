@@ -168,7 +168,7 @@ def add_security_headers(response):
     # Content Security Policy (CSP)
     csp = (
         "default-src 'self'; "
-        "script-src 'self' https://cdn.tailwindcss.com https://challenges.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://challenges.cloudflare.com https://*.challenges.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
         "img-src 'self' data: https:; "
         "connect-src 'self' https://challenges.cloudflare.com https://*.challenges.cloudflare.com; "
