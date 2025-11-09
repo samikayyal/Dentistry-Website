@@ -70,6 +70,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress extremely verbose HTTP/2 debug logs from dependencies
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+
 # Enable CORS: restrict to explicit origins in production
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
 if allowed_origins:
@@ -108,11 +113,18 @@ def verify_turnstile(request):
     if not token:
         return False
 
+    secret_key = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "").strip()
+    if not secret_key:
+        logger.error(
+            "CLOUDFLARE_TURNSTILE_SECRET_KEY is not set; captcha cannot be verified"
+        )
+        return False
+
     try:
         response = requests.post(
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
             data={
-                "secret": os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY"),
+                "secret": secret_key,
                 "response": token,
                 "remoteip": ip,
             },
@@ -120,6 +132,8 @@ def verify_turnstile(request):
         )
         response.raise_for_status()
         result = response.json()
+        if DEBUG_MODE:
+            logger.debug("Turnstile verify result: %s", result)
         return result.get("success", False)
     except requests.RequestException as e:
         logger.warning("Turnstile verification failed: %s", e)
@@ -197,7 +211,12 @@ def index():
 def auth():
     """Authentication page (login/signup)"""
     turnstile_site_key = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "")
-    return render_template("auth.html", turnstile_site_key=turnstile_site_key)
+    if not turnstile_site_key:
+        flash("Sign in is temporarily unavailable: captcha not configured.", "error")
+    return render_template(
+        "auth.html",
+        turnstile_site_key=turnstile_site_key,
+    )
 
 
 @app.route("/auth/signup", methods=["POST"])
@@ -285,23 +304,32 @@ def signup():
 @limiter.limit("5 per minute")
 def login():
     """Handle user login"""
+    print("starting login")
     try:
-        if not verify_turnstile(request):
-            flash("Captcha verification failed. Please try again.", "error")
-            return redirect(url_for("auth"))
-
         email = request.form.get("email")
         password = request.form.get("password")
+        print("email", email)
+        print("password", password)
 
         # Validate inputs
         if not email or not password:
             flash("Email and password are required.", "error")
+            print("email and password required")
             return redirect(url_for("auth"))
 
         # Validate email format
         if not validate_email(email):
             flash("Please enter a valid email address.", "error")
             return redirect(url_for("auth"))
+
+        if not verify_turnstile(request):
+            flash("Captcha verification failed. Please try again.", "error")
+            print("turnstile failed")
+            return redirect(url_for("auth"))
+        print("turnstile verified")
+
+        print("email2", email)
+        print("password2", password)
 
         # Authenticate with Supabase
         client = get_active_supabase_client()
