@@ -5,7 +5,7 @@ Database utility functions for interacting with Supabase
 import logging
 import os
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
@@ -203,8 +203,8 @@ def get_random_daily_topic() -> str:
     if not topics:
         raise ValueError("No topics available for selection")
 
-    # Use current date as seed for consistent daily topic
-    today = datetime.now().date()
+    # Use current date as seed for consistent daily topic (UTC)
+    today = datetime.now(timezone.utc).date()
     seed = int(today.strftime("%Y%m%d"))
     random.seed(seed)
 

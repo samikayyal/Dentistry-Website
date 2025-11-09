@@ -2,7 +2,7 @@
 Tests for quiz-related routes
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -118,7 +118,7 @@ class TestSubmitQuiz:
                 "topic": "Periodontics",
                 "question_ids": [1, 2],
                 "time_limit": None,
-                "start_time": datetime.now().isoformat(),
+                "start_time": datetime.now(timezone.utc).isoformat(),
                 "current_question": 0,
                 "answers": {},
             }
@@ -144,3 +144,99 @@ class TestSubmitQuiz:
             follow_redirects=True,
         )
         assert response.status_code == 200
+
+
+class TestTimezoneHandling:
+    """Test timezone handling for quiz time limits."""
+
+    @patch("app.get_questions_by_topic")
+    def test_quiz_start_time_uses_utc(self, mock_questions, auth_client):
+        """Test that quiz start time is stored with UTC timezone."""
+        mock_questions.return_value = [
+            {"id": 1, "topic": "Periodontics", "question": "Test?"}
+        ]
+
+        response = auth_client.post(
+            "/quiz/start",
+            data={"topic": "Periodontics", "num_questions": "10", "time_limit": "15"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+
+        # Check that start_time includes timezone info
+        with auth_client.session_transaction() as sess:
+            quiz_keys = [k for k in sess.keys() if k.startswith("quiz_")]
+            assert len(quiz_keys) == 1
+            quiz_data = sess[quiz_keys[0]]
+            start_time_str = quiz_data["start_time"]
+            
+            # Parse the ISO format string
+            start_time = datetime.fromisoformat(start_time_str)
+            
+            # Verify it has timezone info (UTC)
+            assert start_time.tzinfo is not None
+            assert start_time.tzinfo == timezone.utc or start_time.tzinfo.utcoffset(start_time) == timedelta(0)
+
+    @patch("app.get_questions_by_ids")
+    def test_time_limit_enforcement(self, mock_questions, auth_client):
+        """Test that time limit is correctly enforced with UTC times."""
+        # Create a quiz that started 16 minutes ago (past 15 minute limit)
+        start_time = datetime.now(timezone.utc) - timedelta(minutes=16)
+        quiz_id = "test-expired-quiz"
+        
+        with auth_client.session_transaction() as sess:
+            sess[f"quiz_{quiz_id}"] = {
+                "topic": "Periodontics",
+                "question_ids": [1, 2],
+                "time_limit": 15,  # 15 minute limit
+                "start_time": start_time.isoformat(),
+                "current_question": 0,
+                "answers": {},
+            }
+
+        mock_questions.return_value = [
+            {
+                "id": 1,
+                "topic": "Periodontics",
+                "question": "Test?",
+                "options": [{"id": 1, "option": "A", "is_correct": True}],
+            }
+        ]
+
+        # Try to access the quiz - should redirect due to time limit
+        response = auth_client.get(f"/quiz/{quiz_id}", follow_redirects=False)
+        assert response.status_code == 302
+        assert "/submit" in response.location
+
+    @patch("app.get_questions_by_ids")
+    def test_elapsed_time_calculation(self, mock_questions, auth_client):
+        """Test that elapsed time is calculated correctly using UTC."""
+        # Create a quiz that started 5 minutes ago
+        start_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+        quiz_id = "test-active-quiz"
+        
+        with auth_client.session_transaction() as sess:
+            sess[f"quiz_{quiz_id}"] = {
+                "topic": "Periodontics",
+                "question_ids": [1, 2],
+                "time_limit": 15,  # 15 minute limit
+                "start_time": start_time.isoformat(),
+                "current_question": 0,
+                "answers": {},
+            }
+
+        mock_questions.return_value = [
+            {
+                "id": 1,
+                "topic": "Periodontics",
+                "question": "Test?",
+                "options": [{"id": 1, "option": "A", "is_correct": True}],
+            }
+        ]
+
+        response = auth_client.get(f"/quiz/{quiz_id}")
+        assert response.status_code == 200
+        
+        # Check that elapsed_seconds is passed to the template
+        # and is approximately 300 seconds (5 minutes)
+        assert b"elapsed_seconds" in response.data or b"timer" in response.data

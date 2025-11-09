@@ -5,7 +5,7 @@ A web application for dentistry students to practice through interactive quizzes
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 from dotenv import load_dotenv
@@ -479,7 +479,7 @@ def guest_login():
         "daily_topic": daily_topic,
         "is_guest": True,
         "attempts": 0,
-        "date": datetime.now().date().isoformat(),
+        "date": datetime.now(timezone.utc).date().isoformat(),
     }
     session.permanent = False  # Guest sessions expire when browser closes
 
@@ -606,7 +606,7 @@ def start_quiz():
 
     # Validate topic for guests
     if guest and not user:
-        today_iso = datetime.now().date().isoformat()
+        today_iso = datetime.now(timezone.utc).date().isoformat()
         guest_date = guest.get("date")
         if guest_date != today_iso:
             guest["date"] = today_iso
@@ -638,7 +638,7 @@ def start_quiz():
         "topic": topic,
         "question_ids": question_ids,
         "time_limit": time_limit,
-        "start_time": datetime.now().isoformat(),
+        "start_time": datetime.now(timezone.utc).isoformat(),
         "current_question": 0,
         "answers": {},
     }
@@ -667,9 +667,10 @@ def quiz(quiz_id):
         session.pop(f"quiz_{quiz_id}", None)
         return redirect(url_for("dashboard"))
 
-    # Calculate elapsed time
+    # Calculate elapsed time using UTC
     start_time = datetime.fromisoformat(quiz_state["start_time"])
-    elapsed_seconds = int((datetime.now() - start_time).total_seconds())
+    current_time = datetime.now(timezone.utc)
+    elapsed_seconds = int((current_time - start_time).total_seconds())
 
     # Check if time limit exceeded
     if quiz_state["time_limit"] and elapsed_seconds >= quiz_state["time_limit"] * 60:
@@ -690,6 +691,7 @@ def quiz(quiz_id):
         quiz_id=quiz_id,
         quiz_data=quiz_data,
         elapsed_seconds=elapsed_seconds,
+        server_time=current_time.isoformat(),
     )
 
 
@@ -722,9 +724,9 @@ def submit_quiz(quiz_id):
         flash("Unable to evaluate quiz due to missing question data.", "error")
         return redirect(url_for("dashboard"))
 
-    # Calculate time taken
+    # Calculate time taken using UTC
     start_time = datetime.fromisoformat(quiz_state["start_time"])
-    time_taken = int((datetime.now() - start_time).total_seconds())
+    time_taken = int((datetime.now(timezone.utc) - start_time).total_seconds())
 
     # Save results for authenticated users
     results = None
@@ -1053,9 +1055,9 @@ def api_submit_quiz():
                 401,
             )
 
-        # Calculate time taken
+        # Calculate time taken using UTC
         start_time = datetime.fromisoformat(quiz_data["start_time"])
-        time_taken = int((datetime.now() - start_time).total_seconds())
+        time_taken = int((datetime.now(timezone.utc) - start_time).total_seconds())
 
         questions = get_questions_by_ids(quiz_data.get("question_ids", []))
 
@@ -1242,7 +1244,7 @@ def health_check():
         jsonify(
             {
                 "status": "healthy",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "database": db_status,
             }
         ),
