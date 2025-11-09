@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 @lru_cache(25)
 def get_supabase_client() -> Client:
     """
-    Create and return a Supabase client instance
+    Create and return a Supabase client instance (unauthenticated - for public operations)
 
     Returns:
         Client: Supabase client instance
@@ -34,6 +34,34 @@ def get_supabase_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not found in environment variables")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def get_authenticated_supabase_client(access_token: str) -> Client:
+    """
+    Create and return an authenticated Supabase client instance for a specific user.
+    This is required for operations that use Row Level Security (RLS) policies.
+
+    IMPORTANT: When using RLS policies that check auth.uid(), you MUST use this function
+    instead of get_supabase_client(). The access token allows Supabase to identify
+    the user in RLS policies, preventing "new row violates row-level security policy" errors.
+
+    Args:
+        access_token: The user's JWT access token from their session
+
+    Returns:
+        Client: Authenticated Supabase client instance
+    """
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        raise ValueError("Supabase credentials not found in environment variables")
+
+    # Create a client with the user's access token
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+    # Set the auth session with the access token to enable RLS
+    # This ensures auth.uid() in RLS policies will correctly identify the user
+    client.postgrest.auth(access_token)
+
+    return client
 
 
 def get_all_topics() -> List[str]:
@@ -190,6 +218,7 @@ def save_quiz_results(
     answers: Dict[int, int],
     time_taken: Optional[int] = None,
     time_limit: Optional[int] = None,
+    access_token: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Save quiz results to the database
@@ -201,12 +230,17 @@ def save_quiz_results(
         answers: Dict mapping question_id to selected_option_id
         time_taken: Time taken in seconds
         time_limit: Time limit in seconds (if any)
+        access_token: User's JWT access token for authenticated operations (required for RLS)
 
     Returns:
         Dict containing quiz history ID and results
     """
     try:
-        supabase = get_supabase_client()
+        # Use authenticated client if access token is provided (required for RLS)
+        if access_token:
+            supabase = get_authenticated_supabase_client(access_token)
+        else:
+            supabase = get_supabase_client()
 
         # Calculate score
         total_questions = len(questions)
@@ -226,9 +260,6 @@ def save_quiz_results(
             question_id = question["id"]
             selected_option_id = normalized_answers.get(int(question_id))
 
-            if selected_option_id is None:
-                continue
-
             options = question.get("options", [])
             correct_option = next(
                 (opt for opt in options if opt.get("is_correct")), None
@@ -240,18 +271,23 @@ def save_quiz_results(
                 except (TypeError, ValueError):
                     correct_option_id = correct_option.get("id")
 
-            was_correct = (
-                correct_option_id is not None
-                and correct_option_id == selected_option_id
-            )
+            # If question was not answered, selected_option_id will be None
+            if selected_option_id is None:
+                was_correct = False
+            else:
+                was_correct = (
+                    correct_option_id is not None
+                    and correct_option_id == selected_option_id
+                )
 
             if was_correct:
                 correct_answers += 1
 
+            # Save all questions, including unanswered ones (with NULL selected_option_id)
             user_answers_data.append(
                 {
                     "question_id": question_id,
-                    "selected_option_id": selected_option_id,
+                    "selected_option_id": selected_option_id,  # Can be None for unanswered
                     "was_correct": was_correct,
                 }
             )
@@ -345,13 +381,34 @@ def get_quiz_details(quiz_id: int, user_id: str) -> Optional[Dict[str, Any]]:
 
         quiz = quiz_response.data[0]
 
-        # Get user answers with question and option details
+        # Get user answers with question details (not options yet - options join only returns selected option)
         answers_response = (
             supabase.table("user_answers")
-            .select("*, questions(*), options(*)")
+            .select("*, questions(*)")
             .eq("quiz_history_id", quiz_id)
             .execute()
         )
+
+        # Get all question IDs from the answers to fetch complete question data with all options
+        question_ids = list(
+            set(
+                answer["question_id"]
+                for answer in answers_response.data
+                if answer.get("question_id")
+            )
+        )
+
+        # Fetch complete questions with ALL options (not just selected ones)
+        questions_with_options = {}
+        if question_ids:
+            complete_questions = get_questions_by_ids(question_ids)
+            questions_with_options = {q["id"]: q for q in complete_questions}
+
+        # Enrich answers with complete question data including all options
+        for answer in answers_response.data:
+            question_id = answer.get("question_id")
+            if question_id and question_id in questions_with_options:
+                answer["questions"] = questions_with_options[question_id]
 
         quiz["answers"] = answers_response.data
 
@@ -362,18 +419,25 @@ def get_quiz_details(quiz_id: int, user_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_user_statistics(user_id: str) -> Dict[str, Any]:
+def get_user_statistics(
+    user_id: str, access_token: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Calculate and retrieve user statistics
 
     Args:
         user_id: User's unique identifier
+        access_token: User's JWT access token for authenticated operations (required for RLS)
 
     Returns:
         Dict containing user statistics (total quizzes, average score, etc.)
     """
     try:
-        supabase = get_supabase_client()
+        # Use authenticated client if access token is provided (required for RLS on user_statistics view)
+        if access_token:
+            supabase = get_authenticated_supabase_client(access_token)
+        else:
+            supabase = get_supabase_client()
 
         # Get user statistics from view
         response = (
@@ -397,6 +461,10 @@ def get_user_statistics(user_id: str) -> Dict[str, Any]:
 
             for key, default_value in default_fields.items():
                 stats[key] = stats.get(key, default_value)
+
+            # Round average_score to 2 decimal places
+            if stats["average_score"]:
+                stats["average_score"] = round(float(stats["average_score"]), 2)
 
             # Calculate percentage of correct answers
             if stats["total_questions_attempted"] > 0:

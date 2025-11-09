@@ -1,88 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dentistry Quiz App{% endblock %}</title>
-    
+    <title>{% block title %}360 Dent - Dentistry Quiz{% endblock %}</title>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    
-    <!-- Configure Tailwind with custom colors -->
+
+    <!-- Navigation Fix -->
+    <style>
+        @media (min-width: 768px) {
+            .desktop-nav {
+                display: flex !important;
+            }
+        }
+    </style>
+
+    <!-- Configure Tailwind with modern design system -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         primary: {
-                            DEFAULT: 'rgb(86, 42, 67)',
-                            light: 'rgb(106, 52, 82)',
-                            dark: 'rgb(66, 32, 51)',
+                            50: 'rgb(251, 245, 250)',
+                            100: 'rgb(246, 230, 240)',
+                            200: 'rgb(233, 206, 220)',
+                            300: 'rgb(209, 168, 190)',
+                            400: 'rgb(177, 119, 148)',
+                            500: 'rgb(86, 42, 67)',
+                            600: 'rgb(75, 37, 59)',
+                            700: 'rgb(64, 32, 51)',
+                            800: 'rgb(53, 27, 43)',
+                            900: 'rgb(42, 21, 34)',
+                        },
+                        accent: {
+                            50: 'rgb(248, 250, 252)',
+                            100: 'rgb(241, 245, 249)',
+                            200: 'rgb(226, 232, 240)',
+                            300: 'rgb(203, 213, 225)',
+                            400: 'rgb(148, 163, 184)',
+                            500: 'rgb(100, 116, 139)',
+                            600: 'rgb(71, 85, 105)',
+                            700: 'rgb(51, 65, 85)',
+                            800: 'rgb(30, 41, 59)',
+                            900: 'rgb(15, 23, 42)',
                         }
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        'display': ['Cal Sans', 'Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.6s ease-out',
+                        'slide-in-right': 'slideInRight 0.4s ease-out',
+                        'bounce-subtle': 'bounceSubtle 2s infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideInRight: {
+                            '0%': { transform: 'translateX(100%)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        },
+                        bounceSubtle: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-5px)' },
+                        },
+                    },
+                    backdropBlur: {
+                        'xs': '2px',
                     }
                 }
             }
         }
     </script>
-    
+
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-    <!-- Navigation Bar -->
-    <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <a href="{{ url_for('index') }}" class="text-2xl font-bold text-primary">
-                    🦷 Dentistry Quiz
+
+<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-accent-900 text-white min-h-screen font-sans">
+    <!-- Modern Navigation -->
+    <nav class="fixed top-0 w-full z-50 backdrop-blur-xl bg-white/5 border-b border-white/10 shadow-2xl">
+        <div class="container mx-auto px-6 py-4 max-w-7xl">
+            <div class="flex justify-between items-center w-full">
+                <!-- Logo -->
+                <a href="{{ url_for('index') }}"
+                    class="text-2xl font-display font-bold text-white hover:text-primary-200 transition-all duration-300 group flex-shrink-0">
+                    <span
+                        class="bg-gradient-to-r from-white to-primary-200 bg-clip-text text-transparent group-hover:from-primary-200 group-hover:to-white">
+                        360 Dent
+                    </span>
                 </a>
-                
-                <div class="space-x-4">
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8 flex-shrink-0 desktop-nav">
                     {% if session.get('user') %}
-                        <a href="{{ url_for('dashboard') }}" class="hover:text-primary transition">Dashboard</a>
-                        <a href="{{ url_for('history') }}" class="hover:text-primary transition">History</a>
-                        <a href="{{ url_for('logout') }}" class="hover:text-primary transition">Logout</a>
+                    <a href="{{ url_for('dashboard') }}"
+                        class="text-accent-200 hover:text-white transition-all duration-300 font-medium relative group whitespace-nowrap block">
+                        Dashboard
+                        <span
+                            class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-400 group-hover:w-full transition-all duration-300"></span>
+                    </a>
+                    <a href="{{ url_for('history') }}"
+                        class="text-accent-200 hover:text-white transition-all duration-300 font-medium relative group whitespace-nowrap block">
+                        History
+                        <span
+                            class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-400 group-hover:w-full transition-all duration-300"></span>
+                    </a>
+                    <div class="h-6 w-px bg-white/20 flex-shrink-0"></div>
+                    <a href="{{ url_for('logout') }}"
+                        class="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 whitespace-nowrap block">
+                        Logout
+                    </a>
                     {% else %}
-                        <a href="{{ url_for('auth') }}" class="hover:text-primary transition">Sign In</a>
-                        <a href="{{ url_for('guest_login') }}" class="px-4 py-2 bg-primary rounded hover:bg-primary-light transition">
+                    <a href="{{ url_for('auth') }}"
+                        class="text-accent-200 hover:text-white transition-all duration-300 font-medium relative group whitespace-nowrap block">
+                        Sign In
+                        <span
+                            class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-400 group-hover:w-full transition-all duration-300"></span>
+                    </a>
+                    <div class="h-6 w-px bg-white/20 flex-shrink-0"></div>
+                    <a href="{{ url_for('guest_login') }}"
+                        class="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 whitespace-nowrap block">
+                        Try as Guest
+                    </a>
+                    {% endif %}
+                </div>
+
+                <!-- Mobile menu button -->
+                <button class="md:hidden p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all duration-300"
+                    id="mobile-menu-button">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" class="menu-icon"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Navigation Menu -->
+            <div class="md:hidden mt-6 pb-6 hidden opacity-0 transform translate-y-4 transition-all duration-300"
+                id="mobile-menu">
+                <div class="bg-white/10 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/20">
+                    <div class="flex flex-col space-y-4">
+                        {% if session.get('user') %}
+                        <a href="{{ url_for('dashboard') }}"
+                            class="text-accent-200 hover:text-white transition-all duration-300 font-medium py-3 px-4 rounded-xl hover:bg-white/10">
+                            Dashboard
+                        </a>
+                        <a href="{{ url_for('history') }}"
+                            class="text-accent-200 hover:text-white transition-all duration-300 font-medium py-3 px-4 rounded-xl hover:bg-white/10">
+                            History
+                        </a>
+                        <div class="h-px bg-white/20"></div>
+                        <a href="{{ url_for('logout') }}"
+                            class="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium text-center shadow-lg">
+                            Logout
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('auth') }}"
+                            class="text-accent-200 hover:text-white transition-all duration-300 font-medium py-3 px-4 rounded-xl hover:bg-white/10">
+                            Sign In
+                        </a>
+                        <div class="h-px bg-white/20"></div>
+                        <a href="{{ url_for('guest_login') }}"
+                            class="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium text-center shadow-lg">
                             Try as Guest
                         </a>
-                    {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <!-- Flash Messages - Toast Style -->
+    <div id="flash-container"
+        class="fixed top-20 right-4 md:right-6 z-50 space-y-3 max-w-md w-[calc(100%-2rem)] md:w-full pointer-events-none">
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="container mx-auto px-4 mt-4">
-                {% for category, message in messages %}
-                    <div class="p-4 rounded {% if category == 'success' %}bg-green-900 border-green-700{% elif category == 'error' %}bg-red-900 border-red-700{% else %}bg-blue-900 border-blue-700{% endif %} border">
-                        {{ message }}
-                    </div>
-                {% endfor %}
+        {% for category, message in messages %}
+        <div class="flash-toast flash-toast-{{ category }} pointer-events-auto animate-slide-in-right
+                    {% if category == 'success' %}bg-green-500/95 border-green-400 text-white
+                    {% elif category == 'error' %}bg-red-500/95 border-red-400 text-white
+                    {% elif category == 'warning' %}bg-yellow-500/95 border-yellow-400 text-white
+                    {% else %}bg-primary-500/95 border-primary-400 text-white{% endif %}">
+            <div class="flex items-start space-x-3 p-4 rounded-xl border backdrop-blur-md shadow-2xl">
+                <div class="flex-shrink-0 mt-0.5">
+                    {% if category == 'success' %}
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    {% elif category == 'error' %}
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    {% elif category == 'warning' %}
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    {% else %}
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-medium text-sm leading-relaxed">{{ message }}</p>
+                </div>
+                <button
+                    class="flash-close flex-shrink-0 ml-3 text-current opacity-70 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
+                    aria-label="Close">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
             </div>
+            <!-- Progress bar for auto-dismiss -->
+            <div class="flash-progress h-1 bg-black/20 rounded-b-xl overflow-hidden">
+                <div class="flash-progress-bar h-full 
+                            {% if category == 'success' %}bg-green-300
+                            {% elif category == 'error' %}bg-red-300
+                            {% elif category == 'warning' %}bg-yellow-300
+                            {% else %}bg-primary-300{% endif %}"></div>
+            </div>
+        </div>
+        {% endfor %}
         {% endif %}
-    {% endwith %}
+        {% endwith %}
+    </div>
 
     <!-- Main Content -->
-    <main>
+    <main class="pt-24">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 border-t border-gray-700 mt-16">
-        <div class="container mx-auto px-4 py-6 text-center text-gray-400">
-            <p>&copy; 2025 Dentistry Quiz Application. Built for dentistry students.</p>
-            <p class="text-sm mt-2">Practice makes perfect! 🦷</p>
+    <!-- Modern Footer -->
+    <footer class="bg-gradient-to-t from-gray-900 to-gray-800 border-t border-white/10 mt-24">
+        <div class="container mx-auto px-6 py-12">
+            <div class="text-center">
+                <div
+                    class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-8">
+                    <span
+                        class="text-2xl font-display font-bold bg-gradient-to-r from-white to-primary-200 bg-clip-text text-transparent">
+                        360 Dent
+                    </span>
+                    <div class="hidden md:block h-6 w-px bg-white/20"></div>
+                    <span class="text-accent-300 font-medium">Dentistry Quiz Platform</span>
+                </div>
+                <p class="text-accent-400 mb-6 max-w-md mx-auto leading-relaxed">
+                    Empowering future dentists with comprehensive, interactive learning experiences designed for
+                    success.
+                </p>
+                <div class="flex justify-center space-x-8 text-sm text-accent-500">
+                    <span>&copy; 2025 360 Dent</span>
+                    <span>•</span>
+                    <span>All rights reserved</span>
+                </div>
+            </div>
         </div>
     </footer>
 
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- Modern Mobile Menu Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuIcon = mobileMenuButton.querySelector('.menu-icon');
+
+            mobileMenuButton.addEventListener('click', function () {
+                const isOpen = !mobileMenu.classList.contains('hidden');
+
+                if (isOpen) {
+                    // Close menu
+                    mobileMenu.classList.add('opacity-0', 'transform', 'translate-y-4');
+                    setTimeout(() => {
+                        mobileMenu.classList.add('hidden');
+                    }, 300);
+                    menuIcon.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+                } else {
+                    // Open menu
+                    mobileMenu.classList.remove('hidden');
+                    setTimeout(() => {
+                        mobileMenu.classList.remove('opacity-0', 'transform', 'translate-y-4');
+                    }, 10);
+                    menuIcon.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+                }
+            });
+
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function (event) {
+                if (!mobileMenuButton.contains(event.target) && !mobileMenu.contains(event.target)) {
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('opacity-0', 'transform', 'translate-y-4');
+                        setTimeout(() => {
+                            mobileMenu.classList.add('hidden');
+                        }, 300);
+                        menuIcon.setAttribute('d', 'M4 6h16M4 12h16M4 18h16');
+                    }
+                }
+            });
+
+            // Flash message auto-dismiss with progress bar
+            const flashToasts = document.querySelectorAll('.flash-toast');
+            flashToasts.forEach((toast) => {
+                const progressBar = toast.querySelector('.flash-progress-bar');
+                const duration = 5000; // 5 seconds
+                let startTime = Date.now();
+                let paused = false;
+                let remainingTime = duration;
+                let timeoutId;
+
+                // Dismiss toast with animation
+                function dismissToast() {
+                    toast.style.transform = 'translateX(100%)';
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'all 0.3s ease-out';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }
+
+                // Start auto-dismiss timer
+                function startTimer() {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        if (!paused) {
+                            dismissToast();
+                        }
+                    }, remainingTime);
+                }
+
+                // Initialize progress bar animation
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                    progressBar.style.transition = `width ${duration}ms linear`;
+                    setTimeout(() => {
+                        progressBar.style.width = '100%';
+                    }, 50);
+                }
+
+                // Start timer
+                startTimer();
+
+                // Pause on hover
+                toast.addEventListener('mouseenter', () => {
+                    paused = true;
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        const elapsed = Date.now() - startTime;
+                        remainingTime = Math.max(0, remainingTime - elapsed);
+                    }
+                    if (progressBar) {
+                        progressBar.style.transition = 'none';
+                    }
+                });
+
+                // Resume on mouse leave
+                toast.addEventListener('mouseleave', () => {
+                    paused = false;
+                    startTime = Date.now();
+                    if (progressBar) {
+                        const currentWidth = progressBar.offsetWidth / progressBar.parentElement.offsetWidth * 100;
+                        progressBar.style.transition = `width ${remainingTime}ms linear`;
+                        progressBar.style.width = '100%';
+                    }
+                    startTimer();
+                });
+
+                // Handle manual close button
+                const closeBtn = toast.querySelector('.flash-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        if (timeoutId) clearTimeout(timeoutId);
+                        dismissToast();
+                    });
+                }
+            });
+
+        });
+    </script>
+
     {% block extra_scripts %}{% endblock %}
 </body>
+
 </html>

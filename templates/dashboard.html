@@ -1,188 +1,386 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Dentistry Quiz{% endblock %}
+{% block title %}Dashboard - 360 Dent{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-4xl font-bold text-white mb-2">
-                {% if is_guest %}
-                    Welcome, Guest!
-                {% else %}
-                    Welcome back!
-                {% endif %}
-            </h1>
-            {% if is_guest %}
-                <p class="text-gray-400">
-                    Today's topic: <span class="text-purple-400 font-semibold">{{ topics[0] if topics else 'Loading...' }}</span>
-                </p>
-                <p class="text-sm mt-2 {% if guest_attempts_remaining > 0 %}text-blue-400{% else %}text-red-400{% endif %}">
-                    📝 Attempts remaining today: <span class="font-bold">{{ guest_attempts_remaining or 0 }}/3</span>
-                </p>
-                {% if guest_attempts_remaining == 0 %}
-                    <p class="text-red-400 text-sm mt-1">
-                        ⚠️ You've used all your guest attempts for today. 
-                        <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline font-semibold">Sign up</a> for unlimited access!
-                    </p>
-                {% else %}
-                    <p class="text-yellow-500 text-sm mt-2">
-                        🔒 Guest users can only practice one topic per day. 
-                        <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline">Sign up</a> for full access!
-                    </p>
-                {% endif %}
-            {% endif %}
-        </div>
+<div class="min-h-screen">
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden py-16 md:py-24">
+        <div class="absolute inset-0 bg-gradient-to-br from-primary-900/20 via-transparent to-accent-900/20"></div>
+        <div class="relative container mx-auto px-6">
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="inline-block mb-6">
+                    <span
+                        class="inline-flex items-center px-4 py-2 rounded-full bg-primary-500/10 border border-primary-400/20 text-primary-300 text-sm font-medium">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        {{ "Guest Mode" if is_guest else "Premium Access" }}
+                    </span>
+                </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Quiz Setup Form -->
-            <div class="lg:col-span-2">
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <h2 class="text-2xl font-bold text-white mb-6">Start a New Quiz</h2>
-                    
-                    <form method="POST" action="{{ url_for('start_quiz') }}" class="space-y-6">
-                        <!-- Topic Selection -->
-                        <div>
-                            <label for="topic" class="block text-sm font-medium text-gray-300 mb-2">
-                                Select Topic
-                            </label>
-                            {% if is_guest %}
-                                <!-- For guests, just show the topic (read-only) -->
-                                <input type="hidden" name="topic" value="{{ topics[0] if topics else '' }}">
-                                <div class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white">
-                                    {{ topics[0] if topics else 'No topic available' }}
+                <h1 class="text-4xl md:text-6xl font-display font-bold mb-6 leading-tight">
+                    <span class="bg-gradient-to-r from-white via-primary-200 to-white bg-clip-text text-transparent">
+                        Welcome back{% if is_guest %}, Guest{% endif %}!
+                    </span>
+                </h1>
+
+                {% if is_guest %}
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-8">
+                    <div class="flex items-center justify-center mb-4">
+                        <div
+                            class="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-white font-semibold">Today's Topic</p>
+                            <p class="text-primary-300">{{ topics[0] if topics else 'Loading...' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div
+                            class="bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-400/20 rounded-xl p-4">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-blue-400 mr-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="text-blue-300 text-sm font-medium">Attempts Remaining</p>
+                                    <p class="text-white font-bold">{{ guest_attempts_remaining or 0 }}/3</p>
                                 </div>
-                            {% else %}
-                                <!-- For authenticated users, show dropdown -->
-                                <select id="topic" 
-                                        name="topic" 
-                                        required
-                                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                    <option value="">Choose a topic...</option>
-                                    {% for topic in topics %}
-                                        <option value="{{ topic }}">{{ topic }}</option>
-                                    {% endfor %}
-                                </select>
-                            {% endif %}
+                            </div>
                         </div>
 
-                        <!-- Number of Questions -->
-                        <div>
-                            <label for="num_questions" class="block text-sm font-medium text-gray-300 mb-2">
-                                Number of Questions
-                            </label>
-                            <div class="grid grid-cols-4 gap-4">
-                                {% for num in [10, 25, 50, 100] %}
-                                    <label class="relative flex items-center justify-center">
-                                        <input type="radio" 
-                                               name="num_questions" 
-                                               value="{{ num }}" 
-                                               {% if num == 10 %}checked{% endif %}
-                                               class="sr-only peer">
-                                        <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300">
+                        <div
+                            class="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-400/20 rounded-xl p-4">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-yellow-400 mr-3" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                    </path>
+                                </svg>
+                                <div>
+                                    <p class="text-yellow-300 text-sm font-medium">Access Limited</p>
+                                    <p class="text-white text-sm">1 topic per day</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if guest_attempts_remaining == 0 %}
+                    <div class="mt-4 p-4 bg-red-500/10 border border-red-400/20 rounded-xl">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-red-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <div>
+                                <p class="text-red-300 font-medium">No attempts remaining</p>
+                                <p class="text-red-200 text-sm mt-1">
+                                    <a href="{{ url_for('auth') }}"
+                                        class="text-primary-400 hover:text-primary-300 font-semibold underline">Sign up
+                                        for unlimited access</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-400/20 rounded-xl">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-yellow-400 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <div>
+                                <p class="text-yellow-300 font-medium">Guest limitations</p>
+                                <p class="text-yellow-200 text-sm mt-1">
+                                    <a href="{{ url_for('auth') }}"
+                                        class="text-primary-400 hover:text-primary-300 font-semibold underline">Upgrade
+                                        to premium</a> for full access to all topics
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Decorative elements -->
+        <div class="absolute top-1/4 left-10 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl animate-bounce-subtle">
+        </div>
+        <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl animate-bounce-subtle"
+            style="animation-delay: 1s"></div>
+    </section>
+
+    <!-- Main Dashboard Content -->
+    <section class="py-16 md:py-24">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Quiz Setup Form -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 shadow-2xl">
+                        <div class="flex items-center mb-8">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mr-4">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l.707.707A1 1 0 0012.414 11H13m-3 3a1 1 0 100-2 1 1 0 000 2m4-4a1 1 0 100-2 1 1 0 000 2m4-4a1 1 0 100-2 1 1 0 000 2m-8 8a1 1 0 100-2 1 1 0 000 2m4-4a1 1 0 100-2 1 1 0 000 2m4-4a1 1 0 100-2 1 1 0 000 2">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-display font-bold text-white">Start a New Quiz</h2>
+                                <p class="text-accent-300">Choose your preferences and begin learning</p>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('start_quiz') }}" class="space-y-8">
+                            <!-- Topic Selection -->
+                            <div>
+                                <label for="topic"
+                                    class="block text-sm font-semibold text-accent-200 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-primary-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                                        </path>
+                                    </svg>
+                                    Select Topic
+                                </label>
+                                {% if is_guest %}
+                                <input type="hidden" name="topic" value="{{ topics[0] if topics else '' }}">
+                                <div
+                                    class="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white backdrop-blur-sm">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 text-primary-400 mr-3" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                                            </path>
+                                        </svg>
+                                        {{ topics[0] if topics else 'No topic available' }}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <select id="topic" name="topic" required
+                                    class="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-xl text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all">
+                                    <option value="" class="bg-gray-800">Choose a topic...</option>
+                                    {% for topic in topics %}
+                                    <option value="{{ topic }}" class="bg-gray-800">{{ topic }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% endif %}
+                            </div>
+
+                            <!-- Number of Questions -->
+                            <div>
+                                <label class="block text-sm font-semibold text-accent-200 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-primary-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-9 0V1m10 3V1m0 3l1 1v16a2 2 0 01-2 2H6a2 2 0 01-2-2V5l1-1z">
+                                        </path>
+                                    </svg>
+                                    Number of Questions
+                                </label>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {% for num in [10, 25, 50, 100] %}
+                                    <label class="relative">
+                                        <input type="radio" name="num_questions" value="{{ num }}" {% if num==10
+                                            %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="py-4 px-3 text-center bg-white/5 border border-white/20 rounded-xl text-white cursor-pointer peer-checked:bg-primary-500 peer-checked:border-primary-400 hover:bg-white/10 hover:border-white/30 transition-all duration-300 font-medium">
                                             {{ num }}
                                         </div>
                                     </label>
-                                {% endfor %}
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Time Limit -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">
-                                Time Limit (Optional)
-                            </label>
-                            <div class="grid grid-cols-5 gap-4">
-                                <label class="relative flex items-center justify-center">
-                                    <input type="radio" 
-                                           name="time_limit" 
-                                           value="" 
-                                           checked
-                                           class="sr-only peer">
-                                    <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300 text-sm">
-                                        None
-                                    </div>
+                            <!-- Time Limit -->
+                            <div>
+                                <label class="block text-sm font-semibold text-accent-200 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-primary-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Time Limit (Optional)
                                 </label>
-                                {% for time in [15, 30, 45, 60] %}
-                                    <label class="relative flex items-center justify-center">
-                                        <input type="radio" 
-                                               name="time_limit" 
-                                               value="{{ time }}" 
-                                               class="sr-only peer">
-                                        <div class="w-full py-3 text-center bg-gray-700 border-2 border-gray-600 rounded-md text-white cursor-pointer peer-checked:bg-purple-600 peer-checked:border-purple-500 hover:bg-gray-600 transition duration-300 text-sm">
+                                <div class="grid grid-cols-5 gap-3">
+                                    <label class="relative">
+                                        <input type="radio" name="time_limit" value="" checked class="sr-only peer">
+                                        <div
+                                            class="py-4 px-2 text-center bg-white/5 border border-white/20 rounded-xl text-white cursor-pointer peer-checked:bg-primary-500 peer-checked:border-primary-400 hover:bg-white/10 hover:border-white/30 transition-all duration-300 font-medium text-sm">
+                                            None
+                                        </div>
+                                    </label>
+                                    {% for time in [15, 30, 45, 60] %}
+                                    <label class="relative">
+                                        <input type="radio" name="time_limit" value="{{ time }}" class="sr-only peer">
+                                        <div
+                                            class="py-4 px-2 text-center bg-white/5 border border-white/20 rounded-xl text-white cursor-pointer peer-checked:bg-primary-500 peer-checked:border-primary-400 hover:bg-white/10 hover:border-white/30 transition-all duration-300 font-medium text-sm">
                                             {{ time }}m
                                         </div>
                                     </label>
-                                {% endfor %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" {% if is_guest and guest_attempts_remaining==0 %}disabled{% endif %}
+                                class="w-full group px-8 py-4 {% if is_guest and guest_attempts_remaining == 0 %}bg-gray-600/50 cursor-not-allowed{% else %}bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500{% endif %} text-white rounded-2xl transition-all duration-300 font-bold text-lg shadow-2xl hover:shadow-primary-500/25 transform hover:scale-105 disabled:transform-none disabled:shadow-none">
+                                <span class="flex items-center justify-center">
+                                    {% if is_guest and guest_attempts_remaining == 0 %}
+                                    <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                        </path>
+                                    </svg>
+                                    No Attempts Remaining
+                                    {% else %}
+                                    <svg class="w-6 h-6 mr-3 group-hover:translate-x-1 transition-transform" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                    </svg>
+                                    Start Quiz
+                                    {% endif %}
+                                </span>
+                            </button>
+                            {% if is_guest and guest_attempts_remaining == 0 %}
+                            <p class="text-center text-accent-400 text-sm mt-4">
+                                <a href="{{ url_for('auth') }}"
+                                    class="text-primary-400 hover:text-primary-300 font-semibold underline transition-colors">Create
+                                    a free account</a> to continue practicing!
+                            </p>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Statistics Panel (for authenticated users only) -->
+                {% if not is_guest and stats %}
+                <div class="lg:col-span-1">
+                    <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 shadow-2xl">
+                        <div class="flex items-center mb-8">
+                            <div
+                                class="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mr-4">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-display font-bold text-white">Your Progress</h2>
+                                <p class="text-accent-300">Track your learning journey</p>
                             </div>
                         </div>
 
-                        <!-- Submit Button -->
-                        <button type="submit" 
-                                {% if is_guest and guest_attempts_remaining == 0 %}disabled{% endif %}
-                                class="w-full {% if is_guest and guest_attempts_remaining == 0 %}bg-gray-600 cursor-not-allowed{% else %}bg-purple-600 hover:bg-purple-700{% endif %} text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-lg">
-                            {% if is_guest and guest_attempts_remaining == 0 %}
-                                No Attempts Remaining 🔒
-                            {% else %}
-                                Start Quiz 🚀
-                            {% endif %}
-                        </button>
-                        {% if is_guest and guest_attempts_remaining == 0 %}
-                            <p class="text-center text-gray-400 text-sm mt-2">
-                                <a href="{{ url_for('auth') }}" class="text-purple-400 hover:underline font-semibold">Create a free account</a> to continue practicing!
-                            </p>
-                        {% endif %}
-                    </form>
-                </div>
-            </div>
+                        <div class="space-y-6">
+                            <div
+                                class="bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-400/20 rounded-2xl p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-blue-300 text-sm font-medium mb-1">Total Quizzes</p>
+                                        <p class="text-3xl font-bold text-white">{{ stats.total_quizzes or 0 }}</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
 
-            <!-- Statistics Panel (for authenticated users only) -->
-            {% if not is_guest and stats %}
-            <div class="lg:col-span-1">
-                <div class="bg-gray-800 rounded-lg shadow-xl p-6">
-                    <h2 class="text-2xl font-bold text-white mb-6">Your Statistics</h2>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-gray-700 rounded-lg p-4">
-                            <p class="text-gray-400 text-sm">Total Quizzes</p>
-                            <p class="text-3xl font-bold text-white">{{ stats.total_quizzes or 0 }}</p>
-                        </div>
-                        
-                        <div class="bg-gray-700 rounded-lg p-4">
-                            <p class="text-gray-400 text-sm">Average Score</p>
-                            <p class="text-3xl font-bold text-purple-400">{{ stats.average_score or 0 }}%</p>
-                        </div>
-                        
-                        <div class="bg-gray-700 rounded-lg p-4">
-                            <p class="text-gray-400 text-sm">Best Score</p>
-                            <p class="text-3xl font-bold text-green-400">{{ stats.best_score or 0 }}%</p>
+                            <div
+                                class="bg-gradient-to-r from-primary-500/10 to-primary-600/10 border border-primary-400/20 rounded-2xl p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-primary-300 text-sm font-medium mb-1">Average Score</p>
+                                        <p class="text-3xl font-bold text-white">{{ stats.average_score or 0 }}%</p>
+                                    </div>
+                                    <div
+                                        class="w-12 h-12 bg-primary-500/20 rounded-xl flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-primary-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-gradient-to-r from-green-500/10 to-green-600/10 border border-green-400/20 rounded-2xl p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-green-300 text-sm font-medium mb-1">Best Score</p>
+                                        <p class="text-3xl font-bold text-white">{{ stats.best_score or 0 }}%</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-400/20 rounded-2xl p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-purple-300 text-sm font-medium mb-1">Overall Accuracy</p>
+                                        <p class="text-3xl font-bold text-white">{{ stats.overall_accuracy or 0 }}%</p>
+                                    </div>
+                                    <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="bg-gray-700 rounded-lg p-4">
-                            <p class="text-gray-400 text-sm">Overall Accuracy</p>
-                            <p class="text-3xl font-bold text-blue-400">{{ stats.overall_accuracy or 0 }}%</p>
+                        <div class="mt-8">
+                            <a href="{{ url_for('history') }}"
+                                class="group w-full px-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-2xl hover:bg-white/20 hover:border-white/40 transition-all duration-300 font-semibold text-center shadow-xl hover:shadow-2xl transform hover:scale-105 flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-3 group-hover:translate-x-1 transition-transform" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                View History
+                            </a>
                         </div>
                     </div>
-
-                    <div class="mt-6">
-                        <a href="{{ url_for('history') }}" 
-                           class="block w-full text-center bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
-                            View History
-                        </a>
-                    </div>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
-
-        <!-- Logout -->
-        <div class="mt-8 text-center">
-            <a href="{{ url_for('logout') }}" 
-               class="text-gray-400 hover:text-white transition duration-300">
-                Logout
-            </a>
-        </div>
-    </div>
+    </section>
 </div>
 {% endblock %}

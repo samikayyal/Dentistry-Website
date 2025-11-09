@@ -40,6 +40,7 @@ from utils.database import (  # noqa: E402
 from utils.helpers import (  # noqa: E402
     format_time,
     generate_quiz_id,
+    refresh_user_token,
 )
 from utils.validation import validate_email  # noqa: E402
 
@@ -304,17 +305,13 @@ def signup():
 @limiter.limit("5 per minute")
 def login():
     """Handle user login"""
-    print("starting login")
     try:
         email = request.form.get("email")
         password = request.form.get("password")
-        print("email", email)
-        print("password", password)
 
         # Validate inputs
         if not email or not password:
             flash("Email and password are required.", "error")
-            print("email and password required")
             return redirect(url_for("auth"))
 
         # Validate email format
@@ -324,12 +321,7 @@ def login():
 
         if not verify_turnstile(request):
             flash("Captcha verification failed. Please try again.", "error")
-            print("turnstile failed")
             return redirect(url_for("auth"))
-        print("turnstile verified")
-
-        print("email2", email)
-        print("password2", password)
 
         # Authenticate with Supabase
         client = get_active_supabase_client()
@@ -352,10 +344,12 @@ def login():
             }
         )
 
-        if response.user:
+        if response.user and response.session:
             session["user"] = {
                 "id": response.user.id,
                 "email": response.user.email,
+                "access_token": response.session.access_token,
+                "refresh_token": response.session.refresh_token,
             }
             session.permanent = True
             flash("Login successful! Welcome back!", "success")
@@ -402,7 +396,7 @@ def verify_email():
                 {"email": pending["email"], "token": otp_code, "type": "email"}
             )
 
-            if response.user:
+            if response.user and response.session:
                 # Clear pending verification
                 session.pop("pending_verification", None)
 
@@ -410,6 +404,8 @@ def verify_email():
                 session["user"] = {
                     "id": response.user.id,
                     "email": response.user.email,
+                    "access_token": response.session.access_token,
+                    "refresh_token": response.session.refresh_token,
                 }
                 session.permanent = True
                 flash("Email verified successfully! Welcome!", "success")
@@ -516,8 +512,39 @@ def dashboard():
 
     # Get user statistics if authenticated
     stats = None
+
     if user:
-        stats = get_user_statistics(user["id"])
+        try:
+            stats = get_user_statistics(
+                user["id"], access_token=user.get("access_token")
+            )
+        except Exception as e:
+            # Check if JWT expired
+            if "JWT expired" in str(e) or "PGRST303" in str(e):
+                logger.info("Access token expired, attempting refresh")
+                refreshed_session = refresh_user_token(user)
+                if refreshed_session:
+                    session["user"] = refreshed_session
+                    user = refreshed_session
+                    # Retry with new token
+                    try:
+                        stats = get_user_statistics(
+                            user["id"], access_token=user.get("access_token")
+                        )
+                    except Exception as retry_e:
+                        logger.exception(
+                            "Error fetching stats after token refresh: %s", retry_e
+                        )
+                        stats = None
+                else:
+                    # Token refresh failed, clear session and redirect to login
+                    logger.warning("Token refresh failed, logging out user")
+                    session.clear()
+                    flash("Your session has expired. Please login again.", "info")
+                    return redirect(url_for("auth"))
+            else:
+                logger.exception("Error fetching user statistics: %s", e)
+                stats = None
 
     # For guests, limit to daily topic only
     guest_attempts = 0
@@ -710,14 +737,53 @@ def submit_quiz(quiz_id):
             else None
         )
 
-        results = save_quiz_results(
-            user_id=user["id"],
-            topic=quiz_state["topic"],
-            questions=questions,
-            answers=quiz_state["answers"],
-            time_taken=time_taken,
-            time_limit=time_limit_seconds,
-        )
+        try:
+            results = save_quiz_results(
+                user_id=user["id"],
+                topic=quiz_state["topic"],
+                questions=questions,
+                answers=quiz_state["answers"],
+                time_taken=time_taken,
+                time_limit=time_limit_seconds,
+                access_token=user.get("access_token"),
+            )
+        except Exception as e:
+            # Check if JWT expired
+            if "JWT expired" in str(e) or "PGRST303" in str(e):
+                logger.info(
+                    "Access token expired during quiz submission, attempting refresh"
+                )
+                refreshed_session = refresh_user_token(user)
+                if refreshed_session:
+                    session["user"] = refreshed_session
+                    user = refreshed_session
+                    # Retry with new token
+                    try:
+                        results = save_quiz_results(
+                            user_id=user["id"],
+                            topic=quiz_state["topic"],
+                            questions=questions,
+                            answers=quiz_state["answers"],
+                            time_taken=time_taken,
+                            time_limit=time_limit_seconds,
+                            access_token=user.get("access_token"),
+                        )
+                    except Exception as retry_e:
+                        logger.exception(
+                            "Error saving quiz results after token refresh: %s", retry_e
+                        )
+                        flash("Failed to save quiz results. Please try again.", "error")
+                        return redirect(url_for("dashboard"))
+                else:
+                    # Token refresh failed, clear session and redirect to login
+                    logger.warning("Token refresh failed during quiz submission")
+                    session.clear()
+                    flash("Your session has expired. Please login again.", "info")
+                    return redirect(url_for("auth"))
+            else:
+                logger.exception("Error saving quiz results: %s", e)
+                flash("Failed to save quiz results. Please try again.", "error")
+                return redirect(url_for("dashboard"))
 
         if results:
             # Store results in session for display
@@ -793,9 +859,38 @@ def quiz_results(quiz_id):
             quiz_details = get_quiz_details(quiz_id_int, user["id"])
 
             if quiz_details:
+                # Transform quiz_details into quiz_data format for the template
+                quiz_data = None
+                if quiz_details.get("answers"):
+                    # Build questions array and answers dict from user_answers
+                    # get_quiz_details now returns complete question data with all options
+                    questions_list = []
+                    answers_dict = {}
+                    seen_question_ids = set()
+
+                    for answer in quiz_details["answers"]:
+                        question_data = answer.get("questions")
+                        question_id = answer.get("question_id")
+
+                        # Add complete question data (only once per question)
+                        if question_data and question_id not in seen_question_ids:
+                            questions_list.append(question_data)
+                            seen_question_ids.add(question_id)
+
+                        # Add selected answer to answers dict (can be None for unanswered)
+                        if question_id:
+                            answers_dict[question_id] = answer.get("selected_option_id")
+
+                    if questions_list:
+                        quiz_data = {
+                            "questions": questions_list,
+                            "answers": answers_dict,
+                        }
+
                 return render_template(
                     "results.html",
                     results=quiz_details,
+                    quiz_data=quiz_data,
                     is_guest=False,
                     time_formatted=format_time(quiz_details.get("time_taken", 0)),
                 )
@@ -814,6 +909,8 @@ def quiz_results(quiz_id):
 @app.route("/history")
 def history():
     """Display quiz history for authenticated user"""
+    from datetime import datetime
+
     from utils.database import get_quiz_history
 
     user = session.get("user")
@@ -824,6 +921,17 @@ def history():
 
     # Get quiz history
     history_data = get_quiz_history(user["id"], limit=50)
+
+    # Convert completed_at strings to datetime objects
+    for quiz in history_data:
+        if quiz.get("completed_at") and isinstance(quiz["completed_at"], str):
+            try:
+                # Parse ISO format datetime string
+                quiz["completed_at"] = datetime.fromisoformat(
+                    quiz["completed_at"].replace("Z", "+00:00")
+                )
+            except (ValueError, AttributeError):
+                quiz["completed_at"] = None
 
     return render_template("history.html", history=history_data)
 
@@ -846,9 +954,35 @@ def history_detail(quiz_id):
         flash("Quiz not found.", "error")
         return redirect(url_for("history"))
 
+    # Transform quiz_details into quiz_data format for the template
+    quiz_data = None
+    if quiz_details.get("answers"):
+        # Build questions array and answers dict from user_answers
+        # get_quiz_details now returns complete question data with all options
+        questions_list = []
+        answers_dict = {}
+        seen_question_ids = set()
+
+        for answer in quiz_details["answers"]:
+            question_data = answer.get("questions")
+            question_id = answer.get("question_id")
+
+            # Add complete question data (only once per question)
+            if question_data and question_id not in seen_question_ids:
+                questions_list.append(question_data)
+                seen_question_ids.add(question_id)
+
+            # Add selected answer to answers dict (can be None for unanswered)
+            if question_id:
+                answers_dict[question_id] = answer.get("selected_option_id")
+
+        if questions_list:
+            quiz_data = {"questions": questions_list, "answers": answers_dict}
+
     return render_template(
         "results.html",
         results=quiz_details,
+        quiz_data=quiz_data,
         is_history=True,
         time_formatted=format_time(quiz_details.get("time_taken", 0)),
     )
@@ -939,14 +1073,62 @@ def api_submit_quiz():
             else None
         )
 
-        results = save_quiz_results(
-            user_id=user["id"],
-            topic=quiz_data["topic"],
-            questions=questions,
-            answers=answers,
-            time_taken=time_taken,
-            time_limit=time_limit_seconds,
-        )
+        try:
+            results = save_quiz_results(
+                user_id=user["id"],
+                topic=quiz_data["topic"],
+                questions=questions,
+                answers=answers,
+                time_taken=time_taken,
+                time_limit=time_limit_seconds,
+                access_token=user.get("access_token"),
+            )
+        except Exception as save_error:
+            # Check if JWT expired
+            if "JWT expired" in str(save_error) or "PGRST303" in str(save_error):
+                logger.info(
+                    "Access token expired during API quiz submission, attempting refresh"
+                )
+                refreshed_session = refresh_user_token(user)
+                if refreshed_session:
+                    session["user"] = refreshed_session
+                    # Retry with new token
+                    try:
+                        results = save_quiz_results(
+                            user_id=refreshed_session["id"],
+                            topic=quiz_data["topic"],
+                            questions=questions,
+                            answers=answers,
+                            time_taken=time_taken,
+                            time_limit=time_limit_seconds,
+                            access_token=refreshed_session.get("access_token"),
+                        )
+                    except Exception as retry_e:
+                        logger.exception(
+                            "Error saving quiz results after token refresh: %s", retry_e
+                        )
+                        return (
+                            jsonify(
+                                {"success": False, "error": "Failed to save results"}
+                            ),
+                            500,
+                        )
+                else:
+                    # Token refresh failed
+                    logger.warning("Token refresh failed during API quiz submission")
+                    session.clear()
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Session expired",
+                                "redirect": "/auth",
+                            }
+                        ),
+                        401,
+                    )
+            else:
+                raise  # Re-raise non-JWT errors to be caught by outer exception handler
 
         if results:
             # Clean up session
@@ -967,19 +1149,55 @@ def api_submit_quiz():
 @limiter.limit("60 per minute")
 def api_stats():
     """Get user statistics"""
-    from utils.database import get_user_statistics
-
     user = session.get("user")
 
     if not user:
         return jsonify({"success": False, "error": "Authentication required"}), 401
 
     try:
-        stats = get_user_statistics(user["id"])
+        stats = get_user_statistics(user["id"], access_token=user.get("access_token"))
         return jsonify({"success": True, "stats": stats})
     except Exception as e:
-        logger.exception("Error fetching stats: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        # Check if JWT expired
+        if "JWT expired" in str(e) or "PGRST303" in str(e):
+            logger.info("Access token expired, attempting refresh")
+            refreshed_session = refresh_user_token(user)
+            if refreshed_session:
+                session["user"] = refreshed_session
+                # Retry with new token
+                try:
+                    stats = get_user_statistics(
+                        refreshed_session["id"],
+                        access_token=refreshed_session.get("access_token"),
+                    )
+                    return jsonify({"success": True, "stats": stats})
+                except Exception as retry_e:
+                    logger.exception(
+                        "Error fetching stats after token refresh: %s", retry_e
+                    )
+                    return (
+                        jsonify(
+                            {"success": False, "error": "Failed to fetch statistics"}
+                        ),
+                        500,
+                    )
+            else:
+                # Token refresh failed
+                logger.warning("Token refresh failed")
+                session.clear()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Session expired",
+                            "redirect": "/auth",
+                        }
+                    ),
+                    401,
+                )
+        else:
+            logger.exception("Error fetching stats: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ============================================================================
