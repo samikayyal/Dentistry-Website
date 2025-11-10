@@ -220,10 +220,6 @@
             return false;
         }
 
-        // If all good, hide the error
-        const errorElement = document.getElementById('signup-error');
-        errorElement.classList.add('hidden');
-        errorElement.textContent = '';
         return true;
     }
 
@@ -316,18 +312,21 @@
 
         if (signupForm) {
             signupForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                setButtonLoading(document.getElementById('signup-submit'), true);
+
                 if (!validateSignup()) {
-                    e.preventDefault();
+                    setButtonLoading(document.getElementById('signup-submit'), false);
                     return;
                 }
-                e.preventDefault();
+
                 const widget = document.getElementById('signup-turnstile');
                 if (!widget) {
                     alert('Captcha is not configured. Please try again later.');
+                    setButtonLoading(document.getElementById('signup-submit'), false);
                     return;
                 }
                 signupForm.dataset.turnstilePending = 'true';
-                setButtonLoading(document.getElementById('signup-submit'), true);
                 executeTurnstileWhenReady(widget);
             });
         }

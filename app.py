@@ -203,7 +203,7 @@ def redirect_signed_in_users_from_public_pages():
     try:
         endpoint = request.endpoint
         if endpoint in {"index", "auth"}:
-            if session.get("user") or session.get("guest"):
+            if session.get("user"):
                 # Only redirect on safe GETs to avoid interfering with non-idempotent actions
                 if request.method == "GET":
                     return redirect(url_for("dashboard"))
@@ -277,13 +277,14 @@ def signup():
             return redirect(url_for("auth"))
 
         turnstile_token = request.form.get("cf-turnstile-response")
+
         response = client.auth.sign_up(
             {
                 "email": email,
                 "password": password,
-                "options": {
-                    "captcha_token": turnstile_token,
-                },
+                # "options": {
+                #     "captcha_token": turnstile_token,
+                # },
             }
         )
 
