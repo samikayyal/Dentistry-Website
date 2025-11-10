@@ -118,12 +118,19 @@
     </div>
 </div>
 
+<!-- Quiz configuration (hidden, prevents formatter from breaking Jinja) -->
+<div id="quizConfig" data-time-limit="{{ quiz_data.time_limit or '' }}" data-start-time="{{ quiz_data.start_time }}"
+    data-elapsed-seconds="{{ elapsed_seconds }}" data-total-questions="{{ quiz_data.questions|length }}"
+    style="display: none;"></div>
+
 <script>
+    // Read config from data attributes to prevent formatter issues
+    const configEl = document.getElementById('quizConfig');
     let currentQuestionIndex = 0;
-    const totalQuestions = {{ quiz_data.questions| length }};
-    const timeLimit = {% if quiz_data.time_limit %}{{ quiz_data.time_limit }} {% else %} null{% endif %};
-    const startTime = new Date("{{ quiz_data.start_time }}").getTime();
-    const elapsedSeconds = {{ elapsed_seconds }};
+    const totalQuestions = parseInt(configEl.dataset.totalQuestions);
+    const timeLimit = configEl.dataset.timeLimit ? parseInt(configEl.dataset.timeLimit) : null;
+    const startTime = new Date(configEl.dataset.startTime).getTime();
+    const elapsedSeconds = parseInt(configEl.dataset.elapsedSeconds);
 
     // Initialize
     updateQuestionDisplay();
