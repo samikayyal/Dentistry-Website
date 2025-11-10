@@ -121,11 +121,9 @@
 <script>
     let currentQuestionIndex = 0;
     const totalQuestions = {{ quiz_data.questions| length }};
-    const timeLimit = {% if quiz_data.time_limit %}{ { quiz_data.time_limit } } {% else %} null{% endif %};
-    // Use elapsed seconds from server to avoid timezone issues
-    let elapsedSeconds = {{ elapsed_seconds }};
-    const serverTime = new Date("{{ server_time }}").getTime();
-    const clientTimeAtLoad = new Date().getTime();
+    const timeLimit = {% if quiz_data.time_limit %}{{ quiz_data.time_limit }} {% else %} null{% endif %};
+    const startTime = new Date("{{ quiz_data.start_time }}").getTime();
+    const elapsedSeconds = {{ elapsed_seconds }};
 
     // Initialize
     updateQuestionDisplay();
@@ -161,14 +159,11 @@
 
     function startTimer() {
         const timerInterval = setInterval(() => {
-            // Calculate time difference since page load
             const now = new Date().getTime();
-            const clientElapsed = Math.floor((now - clientTimeAtLoad) / 1000);
-            // Add to the server's elapsed time for accurate timing
-            const totalElapsed = elapsedSeconds + clientElapsed;
+            const elapsed = Math.floor((now - startTime) / 1000) + elapsedSeconds;
 
             if (timeLimit) {
-                const remaining = (timeLimit * 60) - totalElapsed;
+                const remaining = (timeLimit * 60) - elapsed;
 
                 if (remaining <= 0) {
                     clearInterval(timerInterval);
@@ -191,8 +186,8 @@
                     }
                 }
             } else {
-                const minutes = Math.floor(totalElapsed / 60);
-                const seconds = totalElapsed % 60;
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
                 const timerElement = document.getElementById('timer');
                 if (timerElement) {
                     timerElement.textContent =
