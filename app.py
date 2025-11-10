@@ -197,6 +197,21 @@ def add_security_headers(response):
     return response
 
 
+@app.before_request
+def redirect_signed_in_users_from_public_pages():
+    """Redirect signed-in users (including guests) away from public pages to dashboard."""
+    try:
+        endpoint = request.endpoint
+        if endpoint in {"index", "auth"}:
+            if session.get("user") or session.get("guest"):
+                # Only redirect on safe GETs to avoid interfering with non-idempotent actions
+                if request.method == "GET":
+                    return redirect(url_for("dashboard"))
+    except Exception:
+        # Do not block the request on any unexpected error here
+        pass
+
+
 @app.route("/")
 def index():
     """Landing page"""
