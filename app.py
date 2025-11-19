@@ -1283,4 +1283,93 @@ def api_stats():
                         access_token=refreshed_session.get("access_token"),
                     )
                     return jsonify({"success": True, "stats": stats})
-               
+                except Exception as retry_e:
+                    logger.exception(
+                        "Error fetching stats after token refresh: %s", retry_e
+                    )
+                    return (
+                        jsonify(
+                            {"success": False, "error": "Failed to fetch statistics"}
+                        ),
+                        500,
+                    )
+            else:
+                # Token refresh failed
+                logger.warning("Token refresh failed")
+                session.clear()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Session expired",
+                            "redirect": "/auth",
+                        }
+                    ),
+                    401,
+                )
+        else:
+            logger.exception("Error fetching stats: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    return render_template("500.html"), 500
+
+
+@app.errorhandler(413)
+def request_too_large(error):
+    """Handle 413 Request Entity Too Large errors"""
+    return (
+        jsonify(
+            {"success": False, "error": "Request too large. Maximum size is 16MB."}
+        ),
+        413,
+    )
+
+
+@app.route("/health")
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Optionally check database connection
+        client = get_active_supabase_client()
+        db_status = "connected" if client is not None else "disconnected"
+    except Exception:
+        db_status = "error"
+
+    return (
+        jsonify(
+            {
+                "status": "healthy",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "database": db_status,
+            }
+        ),
+        200,
+    )
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+if __name__ == "__main__":
+    # Safer default is non-debug
+    debug_mode = os.getenv("DEBUG", "False") == "True"
+    if not debug_mode:
+        app.config["SESSION_COOKIE_SECURE"] = True
+    # In production, run behind a WSGI server like gunicorn
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
