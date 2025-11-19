@@ -470,6 +470,100 @@ def resend_verification_code():
         return redirect(url_for("verify_email"))
 
 
+@app.route("/auth/google")
+def google_login():
+    """Initiate Google OAuth login"""
+    try:
+        client = get_active_supabase_client()
+        if client is None:
+            flash("Authentication service is temporarily unavailable.", "error")
+            return redirect(url_for("auth"))
+
+        # Get the site URL for callback
+        callback_url = url_for("auth_callback", _external=True)
+
+        res = client.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": callback_url
+            }
+        })
+
+        if res.url:
+            return redirect(res.url)
+        else:
+            flash("Could not initiate Google login.", "error")
+            return redirect(url_for("auth"))
+
+    except Exception as e:
+        logger.exception("Google login error: %s", e)
+        flash("An error occurred during Google login.", "error")
+        return redirect(url_for("auth"))
+
+
+@app.route("/auth/callback")
+def auth_callback():
+    """Handle OAuth callback"""
+    return render_template("auth_callback.html")
+
+
+@app.route("/auth/confirm-oauth", methods=["POST"])
+def confirm_oauth():
+    """Handle OAuth token confirmation"""
+    try:
+        data = request.get_json()
+        access_token = data.get("access_token")
+        refresh_token = data.get("refresh_token")
+        code = data.get("code")
+
+        client = get_active_supabase_client()
+        if client is None:
+            return jsonify({"success": False, "error": "Service unavailable"}), 503
+
+        if access_token and refresh_token:
+            # Verify the token by getting the user
+            user_response = client.auth.get_user(access_token)
+
+            if user_response and user_response.user:
+                session["user"] = {
+                    "id": user_response.user.id,
+                    "email": user_response.user.email,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+                session.permanent = True
+                flash("Login successful! Welcome back!", "success")
+                return jsonify({"success": True, "redirect": url_for("dashboard")})
+            else:
+                return jsonify({"success": False, "error": "Invalid tokens"}), 400
+
+        elif code:
+            try:
+                res = client.auth.exchange_code_for_session({"auth_code": code})
+                if res.user and res.session:
+                    session["user"] = {
+                        "id": res.user.id,
+                        "email": res.user.email,
+                        "access_token": res.session.access_token,
+                        "refresh_token": res.session.refresh_token,
+                    }
+                    session.permanent = True
+                    flash("Login successful! Welcome back!", "success")
+                    return jsonify({"success": True, "redirect": url_for("dashboard")})
+                else:
+                    return jsonify({"success": False, "error": "Code exchange failed"}), 400
+            except Exception as e:
+                logger.error("Code exchange error: %s", e)
+                return jsonify({"success": False, "error": str(e)}), 400
+
+        else:
+            return jsonify({"success": False, "error": "No tokens provided"}), 400
+
+    except Exception as e:
+        logger.exception("OAuth confirmation error: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/auth/logout")
 def logout():
     """Handle user logout"""
@@ -1189,93 +1283,4 @@ def api_stats():
                         access_token=refreshed_session.get("access_token"),
                     )
                     return jsonify({"success": True, "stats": stats})
-                except Exception as retry_e:
-                    logger.exception(
-                        "Error fetching stats after token refresh: %s", retry_e
-                    )
-                    return (
-                        jsonify(
-                            {"success": False, "error": "Failed to fetch statistics"}
-                        ),
-                        500,
-                    )
-            else:
-                # Token refresh failed
-                logger.warning("Token refresh failed")
-                session.clear()
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Session expired",
-                            "redirect": "/auth",
-                        }
-                    ),
-                    401,
-                )
-        else:
-            logger.exception("Error fetching stats: %s", e)
-            return jsonify({"success": False, "error": str(e)}), 500
-
-
-# ============================================================================
-# ERROR HANDLERS
-# ============================================================================
-
-
-@app.errorhandler(404)
-def not_found(error):
-    """Handle 404 errors"""
-    return render_template("404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 errors"""
-    return render_template("500.html"), 500
-
-
-@app.errorhandler(413)
-def request_too_large(error):
-    """Handle 413 Request Entity Too Large errors"""
-    return (
-        jsonify(
-            {"success": False, "error": "Request too large. Maximum size is 16MB."}
-        ),
-        413,
-    )
-
-
-@app.route("/health")
-def health_check():
-    """Health check endpoint for monitoring"""
-    try:
-        # Optionally check database connection
-        client = get_active_supabase_client()
-        db_status = "connected" if client is not None else "disconnected"
-    except Exception:
-        db_status = "error"
-
-    return (
-        jsonify(
-            {
-                "status": "healthy",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "database": db_status,
-            }
-        ),
-        200,
-    )
-
-
-# ============================================================================
-# MAIN
-# ============================================================================
-
-if __name__ == "__main__":
-    # Safer default is non-debug
-    debug_mode = os.getenv("DEBUG", "False") == "True"
-    if not debug_mode:
-        app.config["SESSION_COOKIE_SECURE"] = True
-    # In production, run behind a WSGI server like gunicorn
-    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
+               

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Authenticating... - Dentistry Quiz{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-900">
+    <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-white">Completing authentication...</h2>
+        <p class="text-gray-400 mt-2">Please wait while we sign you in.</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check for hash parameters (Implicit flow)
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        
+        // Check for query parameters (PKCE flow)
+        const queryParams = new URLSearchParams(window.location.search);
+        const code = queryParams.get('code');
+
+        if (accessToken && refreshToken) {
+            // Implicit flow: Send tokens to server
+            fetch('{{ url_for("confirm_oauth") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    console.error('Authentication failed:', data.error);
+                    window.location.href = '{{ url_for("auth") }}';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = '{{ url_for("auth") }}';
+            });
+        } else if (code) {
+            // PKCE flow: Send code to server
+             fetch('{{ url_for("confirm_oauth") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: code
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    console.error('Authentication failed:', data.error);
+                    window.location.href = '{{ url_for("auth") }}';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = '{{ url_for("auth") }}';
+            });
+        } else {
+            // No tokens found
+            const error = queryParams.get('error_description') || queryParams.get('error');
+            if (error) {
+                 console.error('Authentication error:', error);
+            }
+            // Redirect back to auth if no tokens found after a short delay
+            setTimeout(() => {
+                window.location.href = '{{ url_for("auth") }}';
+            }, 2000);
+        }
+    });
+</script>
+{% endblock %}
