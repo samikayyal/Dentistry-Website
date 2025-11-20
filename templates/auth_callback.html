@@ -52,12 +52,18 @@
         }
 
         if (!accessToken) {
-            // If no token in hash, it might be that we need to handle PKCE or something else.
-            // But with standard sign_in_with_oauth in Supabase python client, 
-            // it usually redirects to the callback with the token in hash.
+            // Check for PKCE code in query params
+            const searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.has('code')) {
+                // If code is present but we are here, it means the server didn't handle it.
+                // Reloading might trigger the server-side handler again.
+                console.log("PKCE code found, reloading...");
+                window.location.reload();
+                return;
+            }
 
+            // If no token in hash and no code in search params
             console.log("No access token found in hash.");
-            // Fallback: Check if we are authenticated in the browser session (unlikely here)
             alert('Login failed: No access token found.');
             window.location.href = "{{ url_for('auth') }}";
             return;

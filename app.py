@@ -276,7 +276,7 @@ def signup():
             )
             return redirect(url_for("auth"))
 
-        turnstile_token = request.form.get("cf-turnstile-response")
+        # turnstile_token = request.form.get("cf-turnstile-response")
 
         response = client.auth.sign_up(
             {
@@ -409,7 +409,39 @@ def auth_google():
 
 @app.route("/auth/callback")
 def auth_callback():
-    """Handle OAuth callback (render loading page to process hash)"""
+    """Handle OAuth callback"""
+    # Check for PKCE code flow (server-side exchange)
+    code = request.args.get("code")
+    if code:
+        try:
+            client = get_active_supabase_client()
+            if not client:
+                flash("Authentication service unavailable.", "error")
+                return redirect(url_for("auth"))
+
+            # Exchange code for session
+            response = client.auth.exchange_code_for_session({"auth_code": code})
+
+            if response.user and response.session:
+                session["user"] = {
+                    "id": response.user.id,
+                    "email": response.user.email,
+                    "access_token": response.session.access_token,
+                    "refresh_token": response.session.refresh_token,
+                }
+                session.permanent = True
+                flash("Successfully logged in with Google!", "success")
+                return redirect(url_for("dashboard"))
+            else:
+                flash("Login failed. Please try again.", "error")
+                return redirect(url_for("auth"))
+
+        except Exception as e:
+            logger.exception("OAuth callback error: %s", e)
+            flash("An error occurred during login.", "error")
+            return redirect(url_for("auth"))
+
+    # Fallback to client-side hash handling (Implicit flow)
     return render_template("auth_callback.html")
 
 
