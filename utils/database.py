@@ -5,6 +5,7 @@ Database utility functions for interacting with Supabase
 import logging
 import os
 import random
+import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
@@ -23,7 +24,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(25)
+@lru_cache(1)
 def get_supabase_client() -> Client:
     """
     Create and return a Supabase client instance (unauthenticated - for public operations)
@@ -53,6 +54,8 @@ def get_authenticated_supabase_client(access_token: str) -> Client:
     """
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Supabase credentials not found in environment variables")
+    if not access_token:
+        raise ValueError("Access token is required")
 
     # Create a client with the user's access token
     client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -105,11 +108,25 @@ def get_questions_by_topic(
         limit = max(1, min(limit, 100))
 
         # Get random questions for the topic
-        response = supabase.rpc(
-            "get_random_questions", {"p_topic": topic, "p_limit": limit}
-        ).execute()
+        if topic != "Clinical Cases":
+            response = supabase.rpc(
+                "get_random_questions", {"p_topic": topic, "p_limit": limit}
+            ).execute()
+        else:
+            response = supabase.rpc("get_case_numbers_range").execute()
+
+            start = response.data["min"]
+            end = response.data["max"]
+            case_numbers = random.sample(range(start, end + 1), limit)
+            response = supabase.rpc(
+                "get_questions_by_case_numbers", {"case_numbers": case_numbers}
+            ).execute()
 
         questions = response.data or []
+
+        if topic == "Clinical Cases":
+            # Ensure questions from the same case are grouped together
+            questions.sort(key=lambda q: q["id"])
 
         if not include_options:
             return questions
@@ -118,6 +135,10 @@ def get_questions_by_topic(
         if not questions:
             return questions
 
+        # Remove case prefix from questions
+        if topic == "Clinical Cases":
+            for question in questions:
+                question["question"] = re.sub(r"\[CASE \d+\]", "", question["question"])
         # Extract question IDs
         question_ids = [q["id"] for q in questions]
 
@@ -180,12 +201,17 @@ def get_questions_by_ids(question_ids: List[int]) -> List[Dict[str, Any]]:
             question["options"] = options
             question_map[question["id"]] = question
 
+            if question["topic"] == "Clinical Cases":
+                question["question"] = re.sub(r"\[CASE \d+\]", "", question["question"])
+                question["question"] = re.sub(r"Case \d+:", "", question["question"])
+
         ordered_questions = [
             question_map[qid] for qid in question_ids if qid in question_map
         ]
+        if ordered_questions and ordered_questions[0]["topic"] == "Clinical Cases":
+            ordered_questions = sorted(ordered_questions, key=lambda x: x["id"])
 
         return ordered_questions
-
     except Exception as e:
         logger.exception("Error fetching questions by IDs: %s", e)
         return []
@@ -206,9 +232,9 @@ def get_random_daily_topic() -> str:
     # Use current date as seed for consistent daily topic (UTC)
     today = datetime.now(timezone.utc).date()
     seed = int(today.strftime("%Y%m%d"))
-    random.seed(seed)
+    rng = random.Random(seed)
 
-    return random.choice(topics)
+    return rng.choice(topics)
 
 
 def save_quiz_results(
@@ -329,43 +355,65 @@ def save_quiz_results(
         return None
 
 
-def get_quiz_history(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_quiz_history(
+    user_id: str, limit: int = 10, access_token: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Retrieve quiz history for a user
 
     Args:
         user_id: User's unique identifier
         limit: Maximum number of records to retrieve
+        access_token: User's JWT access token for authenticated operations (required for RLS)
 
     Returns:
         List of quiz history records
     """
     try:
-        supabase = get_supabase_client()
+        # Use authenticated client if access token is provided (required for RLS)
+        if access_token:
+            supabase = get_authenticated_supabase_client(access_token)
+        else:
+            supabase = get_supabase_client()
+
+        # Clamp limit to a safe range
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = 10
+        limit = max(1, min(limit, 100))
+
         response = supabase.rpc(
-            "get_user_quiz_history", {"p_user_id": user_id}
+            "get_user_quiz_history", {"p_user_id": user_id, "p_limit": limit}
         ).execute()
 
-        return response.data[:limit] if response.data else []
+        return response.data or []
 
     except Exception as e:
         logger.exception("Error fetching quiz history: %s", e)
         return []
 
 
-def get_quiz_details(quiz_id: int, user_id: str) -> Optional[Dict[str, Any]]:
+def get_quiz_details(
+    quiz_id: int, user_id: str, access_token: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """
     Get detailed results for a specific quiz
 
     Args:
         quiz_id: Quiz history ID
         user_id: User's unique identifier
+        access_token: User's JWT access token for authenticated operations (required for RLS)
 
     Returns:
         Dict containing quiz details with questions and answers
     """
     try:
-        supabase = get_supabase_client()
+        # Use authenticated client if access token is provided (required for RLS)
+        if access_token:
+            supabase = get_authenticated_supabase_client(access_token)
+        else:
+            supabase = get_supabase_client()
 
         # Get quiz history
         quiz_response = (

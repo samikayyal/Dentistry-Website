@@ -29,6 +29,7 @@ flask_session/
 venv/
 ENV/
 env/
+.cursor/
 
 # Environment Variables
 .env
@@ -68,6 +69,7 @@ plan.md
 # Data files
 data/
 question_extraction.py
+upload_data.py
 
 # Misc
 *.md

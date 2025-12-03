@@ -1,8 +1,5 @@
-"""
-Dentistry Quiz Application - Main Flask Application
-A web application for dentistry students to practice through interactive quizzes
-"""
-
+import base64
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -195,6 +192,87 @@ def add_security_headers(response):
     if not DEBUG_MODE:
         response.headers.setdefault("Content-Security-Policy", csp)
     return response
+
+
+def get_jwt_expiration(token: str) -> int | None:
+    """
+    Decode a JWT and extract the expiration timestamp without verification.
+    Returns the 'exp' claim as a Unix timestamp, or None if decoding fails.
+    """
+    try:
+        # JWT has 3 parts: header.payload.signature
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+
+        # Decode the payload (second part) - add padding if needed
+        payload = parts[1]
+        padding = 4 - len(payload) % 4
+        if padding != 4:
+            payload += "=" * padding
+
+        decoded = base64.urlsafe_b64decode(payload)
+        claims = json.loads(decoded)
+        return claims.get("exp")
+    except Exception:
+        return None
+
+
+@app.before_request
+def validate_user_session():
+    """
+    Proactively validate and refresh JWT tokens for logged-in users.
+    This runs before every request to catch expired tokens early.
+    """
+    # Skip for static files and auth-related endpoints
+    if request.endpoint in {
+        "static",
+        "auth",
+        "login",
+        "signup",
+        "logout",
+        "auth_callback",
+        "auth_callback_exchange",
+        "index",
+        None,
+    }:
+        return
+
+    user = session.get("user")
+    if not user or not user.get("access_token"):
+        return
+
+    try:
+        access_token = user["access_token"]
+        exp = get_jwt_expiration(access_token)
+
+        if exp is None:
+            # Can't determine expiration, let the request proceed
+            # and handle errors reactively if they occur
+            return
+
+        current_time = datetime.now(timezone.utc).timestamp()
+        # Refresh if token expires within the next 5 minutes
+        time_until_expiry = exp - current_time
+
+        if time_until_expiry <= 300:  # 5 minutes = 300 seconds
+            logger.info(
+                "JWT expires in %.0f seconds, attempting proactive refresh",
+                time_until_expiry,
+            )
+            refreshed_session = refresh_user_token(user)
+            if refreshed_session:
+                session["user"] = refreshed_session
+                logger.info("Successfully refreshed JWT token proactively")
+            else:
+                # Token refresh failed, clear session and redirect to login
+                logger.warning("Proactive token refresh failed, clearing session")
+                session.clear()
+                flash("Your session has expired. Please login again.", "info")
+                return redirect(url_for("auth"))
+    except Exception as e:
+        # Log but don't block the request - let reactive handling catch issues
+        logger.warning("Error during proactive JWT validation: %s", e)
 
 
 @app.before_request
@@ -905,8 +983,8 @@ def submit_quiz(quiz_id):
                 return redirect(url_for("dashboard"))
 
         if results:
-            # Store results in session for display
-            session[f"results_{quiz_id}"] = results
+            # Store results in session for display (use database quiz_id as key to match redirect URL)
+            session[f"results_{results['quiz_id']}"] = results
             # Clean up quiz session
             session.pop(f"quiz_{quiz_id}", None)
             return redirect(url_for("quiz_results", quiz_id=results["quiz_id"]))
@@ -975,47 +1053,79 @@ def quiz_results(quiz_id):
         # Authenticated user - fetch from database
         try:
             quiz_id_int = int(quiz_id)
-            quiz_details = get_quiz_details(quiz_id_int, user["id"])
+            quiz_details = get_quiz_details(
+                quiz_id_int, user["id"], access_token=user.get("access_token")
+            )
+        except Exception as e:
+            # Check if JWT expired
+            if "JWT expired" in str(e) or "PGRST303" in str(e):
+                logger.info("Access token expired in quiz_results, attempting refresh")
+                refreshed_session = refresh_user_token(user)
+                if refreshed_session:
+                    session["user"] = refreshed_session
+                    user = refreshed_session
+                    # Retry with new token
+                    try:
+                        quiz_id_int = int(quiz_id)
+                        quiz_details = get_quiz_details(
+                            quiz_id_int,
+                            user["id"],
+                            access_token=user.get("access_token"),
+                        )
+                    except Exception as retry_e:
+                        logger.exception(
+                            "Error fetching quiz details after refresh: %s", retry_e
+                        )
+                        flash("Failed to load quiz results.", "error")
+                        return redirect(url_for("dashboard"))
+                else:
+                    logger.warning("Token refresh failed in quiz_results")
+                    session.clear()
+                    flash("Your session has expired. Please login again.", "info")
+                    return redirect(url_for("auth"))
+            else:
+                logger.exception("Error fetching quiz details: %s", e)
+                flash("Failed to load quiz results.", "error")
+                return redirect(url_for("dashboard"))
 
-            if quiz_details:
-                # Transform quiz_details into quiz_data format for the template
-                quiz_data = None
-                if quiz_details.get("answers"):
-                    # Build questions array and answers dict from user_answers
-                    # get_quiz_details now returns complete question data with all options
-                    questions_list = []
-                    answers_dict = {}
-                    seen_question_ids = set()
+        if quiz_details:
+            # Transform quiz_details into quiz_data format for the template
+            quiz_data = None
+            if quiz_details.get("answers"):
+                # Build questions array and answers dict from user_answers
+                # get_quiz_details now returns complete question data with all options
+                questions_list = []
+                answers_dict = {}
+                seen_question_ids = set()
 
-                    for answer in quiz_details["answers"]:
-                        question_data = answer.get("questions")
-                        question_id = answer.get("question_id")
+                for answer in quiz_details["answers"]:
+                    question_data = answer.get("questions")
+                    question_id = answer.get("question_id")
 
-                        # Add complete question data (only once per question)
-                        if question_data and question_id not in seen_question_ids:
-                            questions_list.append(question_data)
-                            seen_question_ids.add(question_id)
+                    # Add complete question data (only once per question)
+                    if question_data and question_id not in seen_question_ids:
+                        questions_list.append(question_data)
+                        seen_question_ids.add(question_id)
 
-                        # Add selected answer to answers dict (can be None for unanswered)
-                        if question_id:
-                            answers_dict[question_id] = answer.get("selected_option_id")
+                    # Add selected answer to answers dict (can be None for unanswered)
+                    if question_id:
+                        answers_dict[question_id] = answer.get("selected_option_id")
 
-                    if questions_list:
-                        quiz_data = {
-                            "questions": questions_list,
-                            "answers": answers_dict,
-                        }
+                if questions_list:
+                    quiz_data = {
+                        "questions": questions_list,
+                        "answers": answers_dict,
+                    }
 
-                return render_template(
-                    "results.html",
-                    results=quiz_details,
-                    quiz_data=quiz_data,
-                    is_guest=False,
-                    time_formatted=format_time(quiz_details.get("time_taken", 0)),
-                )
-        except ValueError:
-            pass
+            return render_template(
+                "results.html",
+                results=quiz_details,
+                quiz_data=quiz_data,
+                is_guest=False,
+                time_formatted=format_time(quiz_details.get("time_taken", 0)),
+            )
 
+    logger.warning("Quiz results not found for quiz_id: %s", quiz_id)
     flash("Results not found.", "error")
     return redirect(url_for("dashboard"))
 
@@ -1039,7 +1149,9 @@ def history():
         return redirect(url_for("auth"))
 
     # Get quiz history
-    history_data = get_quiz_history(user["id"], limit=50)
+    history_data = get_quiz_history(
+        user["id"], limit=50, access_token=user.get("access_token")
+    )
 
     # Convert completed_at strings to datetime objects
     for quiz in history_data:
@@ -1067,7 +1179,9 @@ def history_detail(quiz_id):
         flash("Please login to view quiz details.", "error")
         return redirect(url_for("auth"))
 
-    quiz_details = get_quiz_details(quiz_id, user["id"])
+    quiz_details = get_quiz_details(
+        quiz_id, user["id"], access_token=user.get("access_token")
+    )
 
     if not quiz_details:
         flash("Quiz not found.", "error")

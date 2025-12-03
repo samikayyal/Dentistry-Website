@@ -2,8 +2,9 @@
 Tests for API endpoints
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 class TestAPITopics:
@@ -85,9 +86,7 @@ class TestAPISubmitQuiz:
 
     @patch("app.get_questions_by_ids")
     @patch("app.save_quiz_results")
-    def test_api_submit_success(
-        self, mock_save, mock_questions, auth_client
-    ):
+    def test_api_submit_success(self, mock_save, mock_questions, auth_client):
         """Test successful quiz submission via API."""
         quiz_id = "test-quiz-id"
         with auth_client.session_transaction() as sess:
@@ -98,7 +97,7 @@ class TestAPISubmitQuiz:
                 "start_time": "2025-01-01T00:00:00",
                 "answers": {},
             }
-        
+
         mock_questions.return_value = [
             {
                 "id": 1,
@@ -113,7 +112,7 @@ class TestAPISubmitQuiz:
             "correct_answers": 1,
             "total_questions": 1,
         }
-        
+
         response = auth_client.post(
             "/api/quiz/submit",
             json={"quiz_id": quiz_id, "answers": {1: 1}},
@@ -146,4 +145,3 @@ class TestAPIStats:
         data = response.get_json()
         assert data["success"] is True
         assert "stats" in data
-
