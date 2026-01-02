@@ -74,3 +74,4 @@ upload_data.py
 # Misc
 *.md
 requirements_old.txt
+uv.lock
