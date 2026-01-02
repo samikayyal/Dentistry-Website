@@ -11,15 +11,20 @@
             <p class="text-gray-400 mt-4">
                 Something went wrong on our end. Please try again later.
             </p>
+            <p class="text-gray-500 mt-2 text-sm">
+                If the problem persists, contact us at
+                <a href="mailto:suuport@360-dent.com"
+                    class="text-purple-400 hover:text-purple-300 underline">suuport@360-dent.com</a>
+            </p>
         </div>
 
         <div class="space-y-4">
-            <a href="{{ url_for('index') }}" 
-               class="block w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300">
+            <a href="{{ url_for('index') }}"
+                class="block w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300">
                 Go to Home
             </a>
-            <button onclick="window.location.reload();" 
-                    class="block w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-300">
+            <button onclick="window.location.reload();"
+                class="block w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-300">
                 Try Again
             </button>
         </div>
